@@ -14,8 +14,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // Client is used to access services.
@@ -30,11 +28,12 @@ type Client struct {
 	// Useful for adding auth headers, for example.
 	BeforeRequest func(r *http.Request) error
 	// Debug writes a line of debug log output.
+	// No-op by default.
 	Debug func(s string)
 
-	// StubMode causes all the methods to return example data
+	// stubmode causes all the methods to return example data
 	// without actually hitting the API. Useful for testing.
-	StubMode bool
+	stubmode bool
 }
 
 // New makes a new Client.
@@ -43,7 +42,17 @@ func New(remoteHost string) *Client {
 		RemoteHost: remoteHost,
 		Debug:      func(s string) { /* no-op by default */ },
 		HTTPClient: &http.Client{Timeout: 10 * time.Second},
-		StubMode:   false,
+		stubmode:   false,
+	}
+	return c
+}
+
+// NewTest makes a new test Client that always returns the same
+// data.
+func NewTest() *Client {
+	c := &Client{
+		Debug:    func(s string) { /* no-op by default */ },
+		stubmode: true,
 	}
 	return c
 }
@@ -87,20 +96,6 @@ type AssignRoleResponse struct {
 	// DidChange indicates if the role was changed or not. If the role was already
 	// assigned, this will be false.
 	DidChange bool `json:"didChange"`
-}
-
-// CloseIncidentRequest is the request for the CloseIncident call.
-type CloseIncidentRequest struct {
-
-	// Summary is short summary of the Incident
-	Summary string `json:"summary"`
-
-	// Incident is the identifier of the Incident.
-	IncidentID string `json:"incidentID"`
-}
-
-// CloseIncidentResponse is the response for the CloseIncident call.
-type CloseIncidentResponse struct {
 }
 
 // CreateIncidentRequest is the request for the CreateIncident call.
@@ -556,19 +551,19 @@ func NewIncidentsService(client *Client) *IncidentsService {
 
 // AddLabel adds a label to the Incident.
 func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*AddLabelResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubAddLabel()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AddLabel: marshal AddLabelRequest")
+		return nil, fmt.Errorf("IncidentsService.AddLabel: marshal AddLabelRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.AddLabel"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AddLabel: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.AddLabel: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -582,7 +577,7 @@ func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*Ad
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AddLabel")
+		return nil, fmt.Errorf("IncidentsService.AddLabel: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -593,42 +588,42 @@ func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*Ad
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.AddLabel: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.AddLabel: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AddLabel: read response body")
+		return nil, fmt.Errorf("IncidentsService.AddLabel: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.AddLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.AddLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.AddLabelResponse, nil
 }
 
 // AssignRole assigns a role to a user.
 func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) (*AssignRoleResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubAssignRole()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AssignRole: marshal AssignRoleRequest")
+		return nil, fmt.Errorf("IncidentsService.AssignRole: marshal AssignRoleRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.AssignRole"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AssignRole: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.AssignRole: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -642,7 +637,7 @@ func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) 
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AssignRole")
+		return nil, fmt.Errorf("IncidentsService.AssignRole: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -653,42 +648,42 @@ func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) 
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.AssignRole: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.AssignRole: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.AssignRole: read response body")
+		return nil, fmt.Errorf("IncidentsService.AssignRole: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.AssignRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.AssignRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.AssignRoleResponse, nil
 }
 
 // CreateIncident creates a new Incident.
 func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentRequest) (*CreateIncidentResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubCreateIncident()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.CreateIncident: marshal CreateIncidentRequest")
+		return nil, fmt.Errorf("IncidentsService.CreateIncident: marshal CreateIncidentRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.CreateIncident"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.CreateIncident: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.CreateIncident: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -702,7 +697,7 @@ func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentR
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.CreateIncident")
+		return nil, fmt.Errorf("IncidentsService.CreateIncident: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -713,42 +708,42 @@ func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentR
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.CreateIncident: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.CreateIncident: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.CreateIncident: read response body")
+		return nil, fmt.Errorf("IncidentsService.CreateIncident: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.CreateIncident: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.CreateIncident: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.CreateIncidentResponse, nil
 }
 
 // GetIncident gets an existing Incident by ID.
 func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest) (*GetIncidentResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubGetIncident()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.GetIncident: marshal GetIncidentRequest")
+		return nil, fmt.Errorf("IncidentsService.GetIncident: marshal GetIncidentRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.GetIncident"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.GetIncident: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.GetIncident: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -762,7 +757,7 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.GetIncident")
+		return nil, fmt.Errorf("IncidentsService.GetIncident: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -773,42 +768,42 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.GetIncident: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.GetIncident: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.GetIncident: read response body")
+		return nil, fmt.Errorf("IncidentsService.GetIncident: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.GetIncident: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.GetIncident: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.GetIncidentResponse, nil
 }
 
 // QueryIncidents gets a list of Incidents.
 func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsRequest) (*QueryIncidentsResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubQueryIncidents()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.QueryIncidents: marshal QueryIncidentsRequest")
+		return nil, fmt.Errorf("IncidentsService.QueryIncidents: marshal QueryIncidentsRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.QueryIncidents"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.QueryIncidents: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.QueryIncidents: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -822,7 +817,7 @@ func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsR
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.QueryIncidents")
+		return nil, fmt.Errorf("IncidentsService.QueryIncidents: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -833,42 +828,42 @@ func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsR
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.QueryIncidents: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.QueryIncidents: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.QueryIncidents: read response body")
+		return nil, fmt.Errorf("IncidentsService.QueryIncidents: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.QueryIncidents: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.QueryIncidents: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.QueryIncidentsResponse, nil
 }
 
 // RemoveLabel removes a label from the Incident.
 func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest) (*RemoveLabelResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubRemoveLabel()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.RemoveLabel: marshal RemoveLabelRequest")
+		return nil, fmt.Errorf("IncidentsService.RemoveLabel: marshal RemoveLabelRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.RemoveLabel"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.RemoveLabel: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.RemoveLabel: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -882,7 +877,7 @@ func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.RemoveLabel")
+		return nil, fmt.Errorf("IncidentsService.RemoveLabel: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -893,42 +888,42 @@ func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.RemoveLabel: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.RemoveLabel: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.RemoveLabel: read response body")
+		return nil, fmt.Errorf("IncidentsService.RemoveLabel: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.RemoveLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.RemoveLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.RemoveLabelResponse, nil
 }
 
 // UnassignRole removes a role assignment from a user.
 func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleRequest) (*UnassignRoleResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubUnassignRole()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UnassignRole: marshal UnassignRoleRequest")
+		return nil, fmt.Errorf("IncidentsService.UnassignRole: marshal UnassignRoleRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.UnassignRole"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UnassignRole: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.UnassignRole: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -942,7 +937,7 @@ func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleReque
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UnassignRole")
+		return nil, fmt.Errorf("IncidentsService.UnassignRole: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -953,42 +948,42 @@ func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleReque
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.UnassignRole: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.UnassignRole: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UnassignRole: read response body")
+		return nil, fmt.Errorf("IncidentsService.UnassignRole: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.UnassignRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.UnassignRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.UnassignRoleResponse, nil
 }
 
 // UpdateIncidentEventTime updates the start or end times of an Incident.
 func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r UpdateIncidentEventTimeRequest) (*UpdateIncidentEventTimeResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubUpdateIncidentEventTime()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentEventTime: marshal UpdateIncidentEventTimeRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: marshal UpdateIncidentEventTimeRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.UpdateIncidentEventTime"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentEventTime: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -1002,7 +997,7 @@ func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r Update
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentEventTime")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -1013,42 +1008,42 @@ func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r Update
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentEventTime: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentEventTime: read response body")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.UpdateIncidentEventTime: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.UpdateIncidentEventTimeResponse, nil
 }
 
 // UpdateIncidentIsDrill changes whether an Incident is a drill or not.
 func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIncidentIsDrillRequest) (*UpdateIncidentIsDrillResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubUpdateIncidentIsDrill()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentIsDrill: marshal UpdateIncidentIsDrillRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: marshal UpdateIncidentIsDrillRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.UpdateIncidentIsDrill"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentIsDrill: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -1062,7 +1057,7 @@ func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIn
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentIsDrill")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -1073,42 +1068,42 @@ func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIn
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentIsDrill: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateIncidentIsDrill: read response body")
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.UpdateIncidentIsDrill: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.UpdateIncidentIsDrillResponse, nil
 }
 
 // UpdateSeverity updates the severity of an Incident.
 func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityRequest) (*UpdateSeverityResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubUpdateSeverity()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateSeverity: marshal UpdateSeverityRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: marshal UpdateSeverityRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.UpdateSeverity"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateSeverity: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -1122,7 +1117,7 @@ func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityR
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateSeverity")
+		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -1133,42 +1128,42 @@ func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityR
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.UpdateSeverity: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.UpdateSeverity: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateSeverity: read response body")
+		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.UpdateSeverity: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.UpdateSeverity: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.UpdateSeverityResponse, nil
 }
 
 // UpdateStatus updates the status of an Incident.
 func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusRequest) (*UpdateStatusResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubUpdateStatus()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateStatus: marshal UpdateStatusRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateStatus: marshal UpdateStatusRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.UpdateStatus"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateStatus: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateStatus: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -1182,7 +1177,7 @@ func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusReque
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateStatus")
+		return nil, fmt.Errorf("IncidentsService.UpdateStatus: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -1193,42 +1188,42 @@ func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusReque
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.UpdateStatus: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.UpdateStatus: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateStatus: read response body")
+		return nil, fmt.Errorf("IncidentsService.UpdateStatus: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.UpdateStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.UpdateStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.UpdateStatusResponse, nil
 }
 
 // UpdateTitle updates the title of an Incident.
 func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest) (*UpdateTitleResponse, error) {
-	if s.client.StubMode {
+	if s.client.stubmode {
 		return s.stubUpdateTitle()
 	}
 	requestBodyBytes, err := json.Marshal(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateTitle: marshal UpdateTitleRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateTitle: marshal UpdateTitleRequest: %w", err)
 	}
 	url := s.client.RemoteHost + "IncidentsService.UpdateTitle"
 	s.client.Debug(fmt.Sprintf("POST %s", url))
 	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateTitle: NewRequest")
+		return nil, fmt.Errorf("IncidentsService.UpdateTitle: NewRequest: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -1242,7 +1237,7 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 	}
 	resp, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateTitle")
+		return nil, fmt.Errorf("IncidentsService.UpdateTitle: %w", err)
 	}
 	defer resp.Body.Close()
 	var response struct {
@@ -1253,23 +1248,23 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		decodedBody, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "IncidentsService.UpdateTitle: new gzip reader")
+			return nil, fmt.Errorf("IncidentsService.UpdateTitle: new gzip reader: %w", err)
 		}
 		defer decodedBody.Close()
 		bodyReader = decodedBody
 	}
 	respBodyBytes, err := io.ReadAll(bodyReader)
 	if err != nil {
-		return nil, errors.Wrap(err, "IncidentsService.UpdateTitle: read response body")
+		return nil, fmt.Errorf("IncidentsService.UpdateTitle: read response body: %w", err)
 	}
 	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("IncidentsService.UpdateTitle: (%d) %v", resp.StatusCode, string(respBodyBytes))
+			return nil, fmt.Errorf("IncidentsService.UpdateTitle: (%d) %v", resp.StatusCode, string(respBodyBytes))
 		}
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.UpdateTitleResponse, nil
 }
@@ -2705,20 +2700,6 @@ var AssignRoleResponseFields struct {
 	Error string
 }
 
-// CloseIncidentRequestFields holds metadata about fields for CloseIncidentRequest.
-var CloseIncidentRequestFields struct {
-
-	// Summary == "summary"
-	Summary string
-
-	// IncidentID == "incidentID"
-	IncidentID string
-}
-
-// CloseIncidentResponseFields holds metadata about fields for CloseIncidentResponse.
-var CloseIncidentResponseFields struct {
-}
-
 // CreateIncidentRequestFields holds metadata about fields for CreateIncidentRequest.
 var CreateIncidentRequestFields struct {
 
@@ -3359,10 +3340,6 @@ func init() {
 	AssignRoleResponseFields.DidChange = `didChange`
 
 	AssignRoleResponseFields.Error = `error`
-
-	CloseIncidentRequestFields.Summary = `summary`
-
-	CloseIncidentRequestFields.IncidentID = `incidentID`
 
 	CreateIncidentRequestFields.Title = `title`
 
