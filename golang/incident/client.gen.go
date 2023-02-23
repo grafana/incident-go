@@ -74,6 +74,30 @@ type AddLabelResponse struct {
 	Incident Incident `json:"incident"`
 }
 
+type AddTaskRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// Text is the todo item.
+	Text string `json:"text"`
+
+	// AssignToUserId is the user the task wil be assigned to
+	AssignToUserId string `json:"assignToUserID"`
+}
+
+type AddTaskResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
 // AssignRoleRequest is the request for the AssignRole call.
 type AssignRoleRequest struct {
 
@@ -149,6 +173,24 @@ type Cursor struct {
 	// you can make the same request again (except using this Cursor instead) to get
 	// the next page of results.
 	HasMore bool `json:"hasMore"`
+}
+
+type DeleteTaskRequest struct {
+
+	// IncidentID is the ID of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the task.
+	TaskID string `json:"taskID"`
+}
+
+type DeleteTaskResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
 }
 
 // GetHomescreenVersionRequest is the request for the GetHomescreenVersion call.
@@ -505,6 +547,78 @@ type UpdateStatusResponse struct {
 	Incident Incident `json:"incident"`
 }
 
+type UpdateTaskStatusRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the Task to update.
+	TaskID string `json:"taskID"`
+
+	// Status is the new status of this task.
+	Status string `json:"status"`
+}
+
+type UpdateTaskStatusResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
+type UpdateTaskTextRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the task.
+	TaskID string `json:"taskID"`
+
+	// Text is the string that describes the Task.
+	Text string `json:"text"`
+}
+
+type UpdateTaskTextResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
+type UpdateTaskUserRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the Task to update.
+	TaskID string `json:"taskID"`
+
+	// UserID is the ID of the User to assign to the Task.
+	UserID string `json:"userID"`
+}
+
+type UpdateTaskUserResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
 // UpdateTitleRequest is the request for the UpdateTitle call.
 type UpdateTitleRequest struct {
 
@@ -542,7 +656,7 @@ type IncidentsService struct {
 	client *Client
 }
 
-// NewIncidentsService an object capable of interacting with IncidentsService.
+// NewIncidentsService gets a new IncidentsService.
 func NewIncidentsService(client *Client) *IncidentsService {
 	return &IncidentsService{
 		client: client,
@@ -1267,6 +1381,320 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 		return nil, fmt.Errorf(response.Error)
 	}
 	return &response.UpdateTitleResponse, nil
+}
+
+// TasksService provides methods for managing tasks relating to Incidents.
+// Get one by calling NewTasksService.
+type TasksService struct {
+	client *Client
+}
+
+// NewTasksService gets a new TasksService.
+func NewTasksService(client *Client) *TasksService {
+	return &TasksService{
+		client: client,
+	}
+}
+
+// AddTask adds a task to an Incident.
+func (s *TasksService) AddTask(ctx context.Context, r AddTaskRequest) (*AddTaskResponse, error) {
+	if s.client.stubmode {
+		return s.stubAddTask()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.AddTask: marshal AddTaskRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "TasksService.AddTask"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.AddTask: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.AddTask: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AddTaskResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("TasksService.AddTask: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.AddTask: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("TasksService.AddTask: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.AddTaskResponse, nil
+}
+
+// DeleteTask deletes a task.
+func (s *TasksService) DeleteTask(ctx context.Context, r DeleteTaskRequest) (*DeleteTaskResponse, error) {
+	if s.client.stubmode {
+		return s.stubDeleteTask()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.DeleteTask: marshal DeleteTaskRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "TasksService.DeleteTask"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.DeleteTask: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.DeleteTask: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		DeleteTaskResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("TasksService.DeleteTask: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.DeleteTask: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("TasksService.DeleteTask: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.DeleteTaskResponse, nil
+}
+
+// UpdateTaskStatus updates the task's Status.
+func (s *TasksService) UpdateTaskStatus(ctx context.Context, r UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateTaskStatus()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: marshal UpdateTaskStatusRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "TasksService.UpdateTaskStatus"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateTaskStatusResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("TasksService.UpdateTaskStatus: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("TasksService.UpdateTaskStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.UpdateTaskStatusResponse, nil
+}
+
+// UpdateTaskText updates the task's text.
+func (s *TasksService) UpdateTaskText(ctx context.Context, r UpdateTaskTextRequest) (*UpdateTaskTextResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateTaskText()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskText: marshal UpdateTaskTextRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "TasksService.UpdateTaskText"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskText: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskText: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateTaskTextResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("TasksService.UpdateTaskText: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskText: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("TasksService.UpdateTaskText: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.UpdateTaskTextResponse, nil
+}
+
+// UpdateTaskUser updates the task's assigned user. Passing an empty user ID will
+// clear the assigned user.
+func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserRequest) (*UpdateTaskUserResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateTaskUser()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskUser: marshal UpdateTaskUserRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "TasksService.UpdateTaskUser"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskUser: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskUser: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateTaskUserResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("TasksService.UpdateTaskUser: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskUser: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("TasksService.UpdateTaskUser: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.UpdateTaskUserResponse, nil
 }
 
 func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
@@ -2640,6 +3068,348 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 	return &dest, nil
 }
 
+func (s *TasksService) stubAddTask() (*AddTaskResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"incidentID": "incident-123456",
+	"task": {
+		"assignedUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"authorUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2018-01-01T00:00:00Z",
+		"immutable": true,
+		"modifiedTime": "2018-01-01T00:00:00Z",
+		"status": "todo",
+		"taskID": "task-123456",
+		"text": "Assign an investigator"
+	},
+	"taskList": {
+		"doneCount": 8,
+		"tasks": [
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			},
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			}
+		],
+		"todoCount": 5
+	}
+}`
+	var dest AddTaskResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAddTask: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *TasksService) stubDeleteTask() (*DeleteTaskResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"incidentID": "incident-123456",
+	"taskList": {
+		"doneCount": 8,
+		"tasks": [
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			},
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			}
+		],
+		"todoCount": 5
+	}
+}`
+	var dest DeleteTaskResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubDeleteTask: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *TasksService) stubUpdateTaskStatus() (*UpdateTaskStatusResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"incidentID": "incident-123456",
+	"task": {
+		"assignedUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"authorUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2018-01-01T00:00:00Z",
+		"immutable": true,
+		"modifiedTime": "2018-01-01T00:00:00Z",
+		"status": "todo",
+		"taskID": "task-123456",
+		"text": "Assign an investigator"
+	},
+	"taskList": {
+		"doneCount": 8,
+		"tasks": [
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			},
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			}
+		],
+		"todoCount": 5
+	}
+}`
+	var dest UpdateTaskStatusResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateTaskStatus: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *TasksService) stubUpdateTaskText() (*UpdateTaskTextResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"incidentID": "incident-123456",
+	"task": {
+		"assignedUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"authorUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2018-01-01T00:00:00Z",
+		"immutable": true,
+		"modifiedTime": "2018-01-01T00:00:00Z",
+		"status": "todo",
+		"taskID": "task-123456",
+		"text": "Assign an investigator"
+	},
+	"taskList": {
+		"doneCount": 8,
+		"tasks": [
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			},
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			}
+		],
+		"todoCount": 5
+	}
+}`
+	var dest UpdateTaskTextResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateTaskText: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *TasksService) stubUpdateTaskUser() (*UpdateTaskUserResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"incidentID": "incident-123456",
+	"task": {
+		"assignedUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"authorUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2018-01-01T00:00:00Z",
+		"immutable": true,
+		"modifiedTime": "2018-01-01T00:00:00Z",
+		"status": "todo",
+		"taskID": "task-123456",
+		"text": "Assign an investigator"
+	},
+	"taskList": {
+		"doneCount": 8,
+		"tasks": [
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			},
+			{
+				"assignedUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"authorUser": {
+					"name": "Morty Smith",
+					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+					"userID": "user-123"
+				},
+				"createdTime": "2018-01-01T00:00:00Z",
+				"immutable": true,
+				"modifiedTime": "2018-01-01T00:00:00Z",
+				"status": "todo",
+				"taskID": "task-123456",
+				"text": "Assign an investigator"
+			}
+		],
+		"todoCount": 5
+	}
+}`
+	var dest UpdateTaskUserResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateTaskUser: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 // AddLabelRequestFields holds metadata about fields for AddLabelRequest.
 var AddLabelRequestFields struct {
 
@@ -2655,6 +3425,35 @@ var AddLabelResponseFields struct {
 
 	// Incident == "incident"
 	Incident string
+
+	// Error == "error"
+	Error string
+}
+
+// AddTaskRequestFields holds metadata about fields for AddTaskRequest.
+var AddTaskRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Text == "text"
+	Text string
+
+	// AssignToUserId == "assignToUserID"
+	AssignToUserId string
+}
+
+// AddTaskResponseFields holds metadata about fields for AddTaskResponse.
+var AddTaskResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Task == "task"
+	Task string
+
+	// TaskList == "taskList"
+	TaskList string
 
 	// Error == "error"
 	Error string
@@ -2774,6 +3573,29 @@ var CursorFields struct {
 
 	// HasMore == "hasMore"
 	HasMore string
+}
+
+// DeleteTaskRequestFields holds metadata about fields for DeleteTaskRequest.
+var DeleteTaskRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+}
+
+// DeleteTaskResponseFields holds metadata about fields for DeleteTaskResponse.
+var DeleteTaskResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
 }
 
 // GetHomescreenVersionRequestFields holds metadata about fields for GetHomescreenVersionRequest.
@@ -3280,6 +4102,107 @@ var UpdateStatusResponseFields struct {
 	Error string
 }
 
+// UpdateTaskStatusRequestFields holds metadata about fields for UpdateTaskStatusRequest.
+var UpdateTaskStatusRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+
+	// Status == "status"
+	Status string
+
+	// StatusOptions contains the acceptable values for the
+	// UpdateTaskStatusRequest.Status field.
+	StatusOptions struct {
+
+		// Todo == "todo"
+		Todo string
+
+		// Progress == "progress"
+		Progress string
+
+		// Done == "done"
+		Done string
+	}
+}
+
+// UpdateTaskStatusResponseFields holds metadata about fields for UpdateTaskStatusResponse.
+var UpdateTaskStatusResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Task == "task"
+	Task string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateTaskTextRequestFields holds metadata about fields for UpdateTaskTextRequest.
+var UpdateTaskTextRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+
+	// Text == "text"
+	Text string
+}
+
+// UpdateTaskTextResponseFields holds metadata about fields for UpdateTaskTextResponse.
+var UpdateTaskTextResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Task == "task"
+	Task string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateTaskUserRequestFields holds metadata about fields for UpdateTaskUserRequest.
+var UpdateTaskUserRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+
+	// UserID == "userID"
+	UserID string
+}
+
+// UpdateTaskUserResponseFields holds metadata about fields for UpdateTaskUserResponse.
+var UpdateTaskUserResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Task == "task"
+	Task string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
+}
+
 // UpdateTitleRequestFields holds metadata about fields for UpdateTitleRequest.
 var UpdateTitleRequestFields struct {
 
@@ -3322,6 +4245,20 @@ func init() {
 	AddLabelResponseFields.Incident = `incident`
 
 	AddLabelResponseFields.Error = `error`
+
+	AddTaskRequestFields.IncidentID = `incidentID`
+
+	AddTaskRequestFields.Text = `text`
+
+	AddTaskRequestFields.AssignToUserId = `assignToUserID`
+
+	AddTaskResponseFields.IncidentID = `incidentID`
+
+	AddTaskResponseFields.Task = `task`
+
+	AddTaskResponseFields.TaskList = `taskList`
+
+	AddTaskResponseFields.Error = `error`
 
 	AssignRoleRequestFields.IncidentID = `incidentID`
 
@@ -3376,6 +4313,16 @@ func init() {
 	CursorFields.NextValue = `nextValue`
 
 	CursorFields.HasMore = `hasMore`
+
+	DeleteTaskRequestFields.IncidentID = `incidentID`
+
+	DeleteTaskRequestFields.TaskID = `taskID`
+
+	DeleteTaskResponseFields.IncidentID = `incidentID`
+
+	DeleteTaskResponseFields.TaskList = `taskList`
+
+	DeleteTaskResponseFields.Error = `error`
 
 	GetHomescreenVersionResponseFields.Version = `version`
 
@@ -3606,6 +4553,54 @@ func init() {
 	UpdateStatusResponseFields.Incident = `incident`
 
 	UpdateStatusResponseFields.Error = `error`
+
+	UpdateTaskStatusRequestFields.IncidentID = `incidentID`
+
+	UpdateTaskStatusRequestFields.TaskID = `taskID`
+
+	UpdateTaskStatusRequestFields.Status = `status`
+
+	UpdateTaskStatusRequestFields.StatusOptions.Todo = "todo"
+
+	UpdateTaskStatusRequestFields.StatusOptions.Progress = "progress"
+
+	UpdateTaskStatusRequestFields.StatusOptions.Done = "done"
+
+	UpdateTaskStatusResponseFields.IncidentID = `incidentID`
+
+	UpdateTaskStatusResponseFields.Task = `task`
+
+	UpdateTaskStatusResponseFields.TaskList = `taskList`
+
+	UpdateTaskStatusResponseFields.Error = `error`
+
+	UpdateTaskTextRequestFields.IncidentID = `incidentID`
+
+	UpdateTaskTextRequestFields.TaskID = `taskID`
+
+	UpdateTaskTextRequestFields.Text = `text`
+
+	UpdateTaskTextResponseFields.IncidentID = `incidentID`
+
+	UpdateTaskTextResponseFields.Task = `task`
+
+	UpdateTaskTextResponseFields.TaskList = `taskList`
+
+	UpdateTaskTextResponseFields.Error = `error`
+
+	UpdateTaskUserRequestFields.IncidentID = `incidentID`
+
+	UpdateTaskUserRequestFields.TaskID = `taskID`
+
+	UpdateTaskUserRequestFields.UserID = `userID`
+
+	UpdateTaskUserResponseFields.IncidentID = `incidentID`
+
+	UpdateTaskUserResponseFields.Task = `task`
+
+	UpdateTaskUserResponseFields.TaskList = `taskList`
+
+	UpdateTaskUserResponseFields.Error = `error`
 
 	UpdateTitleRequestFields.IncidentID = `incidentID`
 
