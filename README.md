@@ -8,4 +8,4 @@ To learn about the various ways to progammatically interact with Grafana Inciden
 
 ### What can we do better?
 
-The Grafana Incident team aim to deliver a high quality developer experience, so if you think of anything we can do better, please let us know by opening an issue in the [grafana/incident-community](grafana/incident-community) GitHub repo, and starting a conversation. We look forward to hearing from you.
+The Grafana Incident team aim to deliver a high quality developer experience, so if you think of anything we can do better, please let us know by opening an issue in the [grafana/incident-community](https://github.com/grafana/incident-community) GitHub repo, and starting a conversation. We look forward to hearing from you.
