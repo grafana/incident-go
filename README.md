@@ -4,7 +4,7 @@ Client libraries, scripts and examples for using the Grafana Incident API.
 
 ## Get started
 
-To learn about the various ways to progammatically interact with Grafana Incident, be sure to get started with the [Grafana Incident API (preview) Documentation](https://grafana.com/docs/grafana-cloud/incident/api/).
+To learn about the various ways to progammatically interact with Grafana Incident, be sure to get started with the [Grafana Incident API Documentation](https://grafana.com/docs/grafana-cloud/incident/api/).
 
 ### What can we do better?
 
