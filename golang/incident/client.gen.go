@@ -36,8 +36,8 @@ type Client struct {
 	stubmode bool
 }
 
-// New makes a new Client.
-func New(remoteHost string) *Client {
+// NewClient makes a new Client.
+func NewClient(remoteHost string) *Client {
 	c := &Client{
 		RemoteHost: remoteHost,
 		Debug:      func(s string) { /* no-op by default */ },
@@ -47,9 +47,9 @@ func New(remoteHost string) *Client {
 	return c
 }
 
-// NewTest makes a new test Client that always returns the same
+// NewTestClient makes a new test Client that always returns the same
 // data.
-func NewTest() *Client {
+func NewTestClient() *Client {
 	c := &Client{
 		Debug:    func(s string) { /* no-op by default */ },
 		stubmode: true,
