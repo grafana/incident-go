@@ -17,7 +17,8 @@ Simple example:
 
 ```go
 // create a client, and the services you need
-client := incident.NewClient("https://your-api-endpoint/api")
+serviceAccountToken := os.Getenv("SERVICE_ACCOUNT_TOKEN")
+client := incident.NewClient("https://your-api-endpoint/api", serviceAccountToken)
 incidentsService := incident.NewIncidentsService(client)
 
 // declare an incident
