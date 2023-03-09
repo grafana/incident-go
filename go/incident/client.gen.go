@@ -8,12 +8,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -389,6 +384,29 @@ type IncidentsQuery struct {
 	QueryString string `json:"queryString"`
 }
 
+// OutgoingWebhookPayload represents the webhook HTTP POST body and contains
+// metadata for the webhook.
+type OutgoingWebhookPayload struct {
+
+	// Version of this structure, following semantic versioning.
+	Version string `json:"version"`
+
+	// ID of event.
+	ID string `json:"id"`
+
+	// Source is a URI that identifies the context in which an event happened.
+	Source string `json:"source"`
+
+	// Time that event was generated (RFC 3339).
+	Time string `json:"time"`
+
+	// Event describes the (namespaced) event
+	Event string `json:"event"`
+
+	// Incident is the data payload, contains details about the data that was changed.
+	Incident *Incident `json:"incident"`
+}
+
 // QueryIncidentsRequest is the request for the QueryIncidents call.
 type QueryIncidentsRequest struct {
 
@@ -662,29 +680,6 @@ type UserPreview struct {
 
 	// PhotoURL is the URL to the profile picture of the user.
 	PhotoURL string `json:"photoURL"`
-}
-
-// WebhookIncident represents the webhook HTTP POST body and contains metadata for
-// the webhook.
-type WebhookIncident struct {
-
-	// Version of this structure, following semantic versioning.
-	Version string `json:"version"`
-
-	// ID of event.
-	ID string `json:"id"`
-
-	// Source is a URI that identifies the context in which an event happened.
-	Source string `json:"source"`
-
-	// Time that event was generated (RFC 3339).
-	Time string `json:"time"`
-
-	// Event describes the (namespaced) event
-	Event string `json:"event"`
-
-	// Incident is the data payload, contains details about the data that was changed.
-	Incident *Incident `json:"incident"`
 }
 
 // IncidentsService provides the ability to query, get, declare (create), update,
@@ -3880,6 +3875,28 @@ var IncidentsQueryFields struct {
 	QueryString string
 }
 
+// OutgoingWebhookPayloadFields holds metadata about fields for OutgoingWebhookPayload.
+var OutgoingWebhookPayloadFields struct {
+
+	// Version == "version"
+	Version string
+
+	// ID == "id"
+	ID string
+
+	// Source == "source"
+	Source string
+
+	// Time == "time"
+	Time string
+
+	// Event == "event"
+	Event string
+
+	// Incident == "incident"
+	Incident string
+}
+
 // QueryIncidentsRequestFields holds metadata about fields for QueryIncidentsRequest.
 var QueryIncidentsRequestFields struct {
 
@@ -4274,28 +4291,6 @@ var UserPreviewFields struct {
 	PhotoURL string
 }
 
-// WebhookIncidentFields holds metadata about fields for WebhookIncident.
-var WebhookIncidentFields struct {
-
-	// Version == "version"
-	Version string
-
-	// ID == "id"
-	ID string
-
-	// Source == "source"
-	Source string
-
-	// Time == "time"
-	Time string
-
-	// Event == "event"
-	Event string
-
-	// Incident == "incident"
-	Incident string
-}
-
 func init() {
 
 	AddLabelRequestFields.IncidentID = `incidentID`
@@ -4500,6 +4495,18 @@ func init() {
 
 	IncidentsQueryFields.QueryString = `queryString`
 
+	OutgoingWebhookPayloadFields.Version = `version`
+
+	OutgoingWebhookPayloadFields.ID = `id`
+
+	OutgoingWebhookPayloadFields.Source = `source`
+
+	OutgoingWebhookPayloadFields.Time = `time`
+
+	OutgoingWebhookPayloadFields.Event = `event`
+
+	OutgoingWebhookPayloadFields.Incident = `incident`
+
 	QueryIncidentsRequestFields.Query = `query`
 
 	QueryIncidentsRequestFields.Cursor = `cursor`
@@ -4676,63 +4683,4 @@ func init() {
 
 	UserPreviewFields.PhotoURL = `photoURL`
 
-	WebhookIncidentFields.Version = `version`
-
-	WebhookIncidentFields.ID = `id`
-
-	WebhookIncidentFields.Source = `source`
-
-	WebhookIncidentFields.Time = `time`
-
-	WebhookIncidentFields.Event = `event`
-
-	WebhookIncidentFields.Incident = `incident`
-
-}
-
-// VerifySignature checks Gi-Signature header against known secret.
-func VerifySignature(r *http.Request, secret string) error {
-	header := r.Header["Gi-Signature"]
-	if len(header) == 0 || header[0] == "" {
-		return errors.New("empty GI-Signature")
-	}
-	signatures := strings.Split(header[0], ",")
-	s := make(map[string]string)
-	for _, pair := range signatures {
-		values := strings.Split(pair, "=")
-		s[values[0]] = values[1]
-	}
-
-	t := s["t"]
-	v1 := s["v1"]
-
-	payload, err := io.ReadAll(r.Body)
-	// Copy body for other handlers
-	r.Body = io.NopCloser(bytes.NewBuffer(payload))
-	if err != nil {
-		return err
-	}
-	bodyHash := CalcHash(payload)
-	stringToSign := bodyHash + ":" + t + ":v1"
-	expected := GenerateSignature([]byte(stringToSign), secret)
-
-	if expected != v1 {
-		return errors.New("invalid GI-Signature")
-	}
-
-	return nil
-}
-
-// CalcHash encodes SHA256 hash to Base64.
-func CalcHash(data []byte) string {
-	hasher := sha256.New()
-	hasher.Write(data)
-	return base64.StdEncoding.EncodeToString(hasher.Sum(nil))
-}
-
-// GenerateSignature creates SHA256 hash.
-func GenerateSignature(data []byte, secret string) string {
-	m := hmac.New(sha256.New, []byte(secret))
-	m.Write(data)
-	return hex.EncodeToString(m.Sum(nil))
 }
