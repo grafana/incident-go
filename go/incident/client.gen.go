@@ -14,21 +14,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-	"fmt"
-	
 )
 
 // Client is used to access services.
 type Client struct {
 	// RemoteHost is the URL of the remote server that this Client should
 	// access.
-	RemoteHost  string
+	RemoteHost string
 	// HTTPClient is the http.Client to use when making HTTP requests.
-	HTTPClient 	*http.Client
+	HTTPClient *http.Client
 	// BeforeRequest is an optional hook that gives you the opportunity
 	// to inspect or modify the request before it is made.
 	// Useful for adding auth headers, for example.
@@ -51,12 +50,12 @@ type Client struct {
 func NewClient(remoteHost, serviceAccountToken string) *Client {
 	c := &Client{
 		RemoteHost: remoteHost,
-		Debug: func(s string) { /* no-op by default */ },
-		HTTPClient: &http.Client{Timeout:60*time.Second},
-		stubmode: false,
+		Debug:      func(s string) { /* no-op by default */ },
+		HTTPClient: &http.Client{Timeout: 60 * time.Second},
+		stubmode:   false,
 		BeforeRequest: func(r *http.Request) error {
 			// add the Authorization header
-			r.Header.Set("Authorization", "Bearer " + serviceAccountToken)
+			r.Header.Set("Authorization", "Bearer "+serviceAccountToken)
 			return nil
 		},
 	}
@@ -67,1079 +66,626 @@ func NewClient(remoteHost, serviceAccountToken string) *Client {
 // data.
 func NewTestClient() *Client {
 	c := &Client{
-		Debug: func(s string) { /* no-op by default */ },
+		Debug:    func(s string) { /* no-op by default */ },
 		stubmode: true,
 	}
 	return c
 }
 
-
-	
-		// AddLabelRequest is the request for the AddLabel call.
+// AddLabelRequest is the request for the AddLabel call.
 type AddLabelRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Label is the new label of the Incident.
-Label IncidentLabel `json:"label"`
-				
-			
-			}
-		
-	
-	
-		// AddLabelResponse is the response for the AddLabel call.
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Label is the new label of the Incident.
+	Label IncidentLabel `json:"label"`
+}
+
+// AddLabelResponse is the response for the AddLabel call.
 type AddLabelResponse struct {
-			
-				
- 					// Incident is the Incident that was just modified.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		type AddTaskRequest struct {
-			
-				
- 					// IncidentID is the ID of the Incident to add the Task to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Text is the todo item.
-Text string `json:"text"`
-				
-			
-				
- 					// AssignToUserId is the user the task wil be assigned to
-AssignToUserId string `json:"assignToUserID"`
-				
-			
-			}
-		
-	
-	
-		type AddTaskResponse struct {
-			
-				
- 					// IncidentID is the ID of the incident these tasks relate to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Task is the newly added Task. It will also appear in Tasks.
-Task Task `json:"task"`
-				
-			
-				
- 					// TaskList is the tasks list.
-TaskList TaskList `json:"taskList"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// AssignRoleRequest is the request for the AssignRole call.
+
+	// Incident is the Incident that was just modified.
+	Incident Incident `json:"incident"`
+}
+
+type AddTaskRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// Text is the todo item.
+	Text string `json:"text"`
+
+	// AssignToUserId is the user the task wil be assigned to
+	AssignToUserId string `json:"assignToUserID"`
+}
+
+type AddTaskResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
+// AssignRoleRequest is the request for the AssignRole call.
 type AssignRoleRequest struct {
-			
-				
- 					// IncidentID is the identifier.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// UserID is the identifier of the person to assign the role to.
-UserID string `json:"userID"`
-				
-			
-				
- 					// Role is the role of this person.
-Role string `json:"role"`
-				
-			
-			}
-		
-	
-	
-		// AssignRoleResponse is the response for the AssignRole call.
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// UserID is the identifier of the person to assign the role to.
+	UserID string `json:"userID"`
+
+	// Role is the role of this person.
+	Role string `json:"role"`
+}
+
+// AssignRoleResponse is the response for the AssignRole call.
 type AssignRoleResponse struct {
-			
-				
- 					// Incident is the Incident that was just updated.
-Incident Incident `json:"incident"`
-				
-			
-				
- 					// DidChange indicates if the role was changed or not. If the role was already
-// assigned, this will be false.
-DidChange bool `json:"didChange"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// CreateIncidentRequest is the request for the CreateIncident call.
+
+	// Incident is the Incident that was just updated.
+	Incident Incident `json:"incident"`
+
+	// DidChange indicates if the role was changed or not. If the role was already
+	// assigned, this will be false.
+	DidChange bool `json:"didChange"`
+}
+
+// CreateIncidentRequest is the request for the CreateIncident call.
 type CreateIncidentRequest struct {
-			
-				
- 					// Title is the headline title of the Incident. Shorter the better, but should
-// contain enough information to be able to identify and refer to this issue.
-Title string `json:"title"`
-				
-			
-				
- 					// Severity expresses how bad the Incident is.
-Severity string `json:"severity"`
-				
-			
-				
- 					// Labels are the labels associated with the Incident.
-Labels []IncidentLabel `json:"labels"`
-				
-			
-				
- 					// RoomPrefix is the prefix that will be used to create the Incident room.
-RoomPrefix string `json:"roomPrefix"`
-				
-			
-				
- 					// IsDrill indicates if the Incident is a drill or not. Incidents that are drills
-// do not show up in the dashboards, and may behave subtly differently in other
-// ways too. For example, during drills, more help might be offered to users.
-IsDrill bool `json:"isDrill"`
-				
-			
-				
- 					// Status is the starting status of the Incident. Use "resolved" to open a
-// retrospective incident.
-Status string `json:"status"`
-				
-			
-				
- 					// AttachCaption is the title of associated URL.
-AttachCaption string `json:"attachCaption"`
-				
-			
-				
- 					// AttachURLis the associated URL.
-AttachURL string `json:"attachURL"`
-				
-			
-			}
-		
-	
-	
-		// CreateIncidentResponse is the response for the CreateIncident call.
+
+	// Title is the headline title of the Incident. Shorter the better, but should
+	// contain enough information to be able to identify and refer to this issue.
+	Title string `json:"title"`
+
+	// Severity expresses how bad the Incident is.
+	Severity string `json:"severity"`
+
+	// Labels are the labels associated with the Incident.
+	Labels []IncidentLabel `json:"labels"`
+
+	// RoomPrefix is the prefix that will be used to create the Incident room.
+	RoomPrefix string `json:"roomPrefix"`
+
+	// IsDrill indicates if the Incident is a drill or not. Incidents that are drills
+	// do not show up in the dashboards, and may behave subtly differently in other
+	// ways too. For example, during drills, more help might be offered to users.
+	IsDrill bool `json:"isDrill"`
+
+	// Status is the starting status of the Incident. Use "resolved" to open a
+	// retrospective incident.
+	Status string `json:"status"`
+
+	// AttachCaption is the title of associated URL.
+	AttachCaption string `json:"attachCaption"`
+
+	// AttachURLis the associated URL.
+	AttachURL string `json:"attachURL"`
+}
+
+// CreateIncidentResponse is the response for the CreateIncident call.
 type CreateIncidentResponse struct {
-			
-				
- 					// Incident is the Incident that was created.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// Cursor describes the position in a result set. It is passed back into the same
+
+	// Incident is the Incident that was created.
+	Incident Incident `json:"incident"`
+}
+
+// Cursor describes the position in a result set. It is passed back into the same
 // API to get the next page of results.
 type Cursor struct {
-			
-				
- 					// NextValue is the start position of the next set of results. The implementation
-// may change, so clients should not rely on this value.
-NextValue string `json:"nextValue"`
-				
-			
-				
- 					// HasMore indicates whether there are more results or not. If HasMore is true,
-// you can make the same request again (except using this Cursor instead) to get
-// the next page of results.
-HasMore bool `json:"hasMore"`
-				
-			
-			}
-		
-	
-	
-		type DeleteTaskRequest struct {
-			
-				
- 					// IncidentID is the ID of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// TaskID is the ID of the task.
-TaskID string `json:"taskID"`
-				
-			
-			}
-		
-	
-	
-		type DeleteTaskResponse struct {
-			
-				
- 					// IncidentID is the ID of the incident these tasks relate to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// TaskList is the tasks list.
-TaskList TaskList `json:"taskList"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// GetHomescreenVersionRequest is the request for the GetHomescreenVersion call.
+
+	// NextValue is the start position of the next set of results. The implementation
+	// may change, so clients should not rely on this value.
+	NextValue string `json:"nextValue"`
+
+	// HasMore indicates whether there are more results or not. If HasMore is true,
+	// you can make the same request again (except using this Cursor instead) to get
+	// the next page of results.
+	HasMore bool `json:"hasMore"`
+}
+
+type DeleteTaskRequest struct {
+
+	// IncidentID is the ID of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the task.
+	TaskID string `json:"taskID"`
+}
+
+type DeleteTaskResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
+// GetHomescreenVersionRequest is the request for the GetHomescreenVersion call.
 type GetHomescreenVersionRequest struct {
-			
-			}
-		
-	
-	
-		// GetHomescreenVersionResponse is the response for the GetHomescreenVersion call.
+}
+
+// GetHomescreenVersionResponse is the response for the GetHomescreenVersion call.
 type GetHomescreenVersionResponse struct {
-			
-				
- 					// Version is the refresh value of the home screen. A higher value than last time
-// indicates that the home screen should be refreshed.
-Version int `json:"version"`
-				
-			
-			}
-		
-	
-	
-		// GetIncidentRequest is the request for the GetIncident call.
+
+	// Version is the refresh value of the home screen. A higher value than last time
+	// indicates that the home screen should be refreshed.
+	Version int `json:"version"`
+}
+
+// GetIncidentRequest is the request for the GetIncident call.
 type GetIncidentRequest struct {
-			
-				
- 					// IncidentID is the identifier.
-IncidentID string `json:"incidentID"`
-				
-			
-			}
-		
-	
-	
-		// GetIncidentResponse is the response for the GetIncident call.
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+}
+
+// GetIncidentResponse is the response for the GetIncident call.
 type GetIncidentResponse struct {
-			
-				
- 					// Incident is the Incident.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// GetIncidentVersionRequest is the request for the GetIncidentVersion call.
+
+	// Incident is the Incident.
+	Incident Incident `json:"incident"`
+}
+
+// GetIncidentVersionRequest is the request for the GetIncidentVersion call.
 type GetIncidentVersionRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident. A higher value than last time
-// indicates that the dashboard should be refreshed.
-IncidentID string `json:"incidentID"`
-				
-			
-			}
-		
-	
-	
-		// GetIncidentVersionResponse is the response for the GetIncidentVersion call.
+
+	// IncidentID is the identifier of the Incident. A higher value than last time
+	// indicates that the dashboard should be refreshed.
+	IncidentID string `json:"incidentID"`
+}
+
+// GetIncidentVersionResponse is the response for the GetIncidentVersion call.
 type GetIncidentVersionResponse struct {
-			
-				
- 					// Version is the refresh value of the Incident.
-Version int `json:"version"`
-				
-			
-			}
-		
-	
-	
-		// Incident is a single incident.
+
+	// Version is the refresh value of the Incident.
+	Version int `json:"version"`
+}
+
+// Incident is a single incident.
 type Incident struct {
-			
-				
- 					// IncidentID is the identifier.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Severity expresses how bad the Incident is.
-Severity string `json:"severity"`
-				
-			
-				
- 					// Labels is a list of strings associated with this Incident.
-Labels []IncidentLabel `json:"labels"`
-				
-			
-				
- 					// IsDrill indicates if the Incident is a drill or not. Incidents that are drills
-// do not show up in the dashboards, and may behave subtly differently in other
-// ways too. For example, during drills, more help might be offered to users.
-IsDrill bool `json:"isDrill"`
-				
-			
-				
- 					// CreatedTime is when the Incident was created.
-CreatedTime string `json:"createdTime"`
-				
-			
-				
- 					// ModifiedTime is when the Incident was last modified.
-ModifiedTime string `json:"modifiedTime"`
-				
-			
-				
- 					// CreatedByUser is the UserPreview that created the Incident.
-CreatedByUser UserPreview `json:"createdByUser"`
-				
-			
-				
- 					// ClosedTime is when the Incident was closed.
-ClosedTime string `json:"closedTime"`
-				
-			
-				
- 					// DurationSeconds is the number of seconds this Incident was (or is) open for.
-DurationSeconds int `json:"durationSeconds"`
-				
-			
-				
- 					// Status is the current status of the Incident.
-Status string `json:"status"`
-				
-			
-				
- 					// Title is the high level description of the Incident.
-Title string `json:"title"`
-				
-			
-				
- 					// OverviewURL is the URL to the overview page for the Incident.
-OverviewURL string `json:"overviewURL"`
-				
-			
-				
- 					// Roles describes the individuals involved in the Incident.
-Roles []IncidentRole `json:"roles"`
-				
-			
-				
- 					// TaskList is the list of tasks associated with the Incident.
-TaskList TaskList `json:"taskList"`
-				
-			
-				
- 					// Summary is as short recap of the Incident.
-Summary string `json:"summary"`
-				
-			
-				
- 					// HeroImagePath is the path to the hero image for this Incident.
-HeroImagePath string `json:"heroImagePath"`
-				
-			
-				
- 					// IncidentStart is when the Incident began.
-IncidentStart string `json:"incidentStart"`
-				
-			
-				
- 					// IncidentEnd is when the Incident ended.
-IncidentEnd string `json:"incidentEnd"`
-				
-			
-			}
-		
-	
-	
-		// IncidentLabel is a label associated with an Incident.
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// Severity expresses how bad the Incident is.
+	Severity string `json:"severity"`
+
+	// Labels is a list of strings associated with this Incident.
+	Labels []IncidentLabel `json:"labels"`
+
+	// IsDrill indicates if the Incident is a drill or not. Incidents that are drills
+	// do not show up in the dashboards, and may behave subtly differently in other
+	// ways too. For example, during drills, more help might be offered to users.
+	IsDrill bool `json:"isDrill"`
+
+	// CreatedTime is when the Incident was created.
+	CreatedTime string `json:"createdTime"`
+
+	// ModifiedTime is when the Incident was last modified.
+	ModifiedTime string `json:"modifiedTime"`
+
+	// CreatedByUser is the UserPreview that created the Incident.
+	CreatedByUser UserPreview `json:"createdByUser"`
+
+	// ClosedTime is when the Incident was closed.
+	ClosedTime string `json:"closedTime"`
+
+	// DurationSeconds is the number of seconds this Incident was (or is) open for.
+	DurationSeconds int `json:"durationSeconds"`
+
+	// Status is the current status of the Incident.
+	Status string `json:"status"`
+
+	// Title is the high level description of the Incident.
+	Title string `json:"title"`
+
+	// OverviewURL is the URL to the overview page for the Incident.
+	OverviewURL string `json:"overviewURL"`
+
+	// Roles describes the individuals involved in the Incident.
+	Roles []IncidentRole `json:"roles"`
+
+	// TaskList is the list of tasks associated with the Incident.
+	TaskList TaskList `json:"taskList"`
+
+	// Summary is as short recap of the Incident.
+	Summary string `json:"summary"`
+
+	// HeroImagePath is the path to the hero image for this Incident.
+	HeroImagePath string `json:"heroImagePath"`
+
+	// IncidentStart is when the Incident began.
+	IncidentStart string `json:"incidentStart"`
+
+	// IncidentEnd is when the Incident ended.
+	IncidentEnd string `json:"incidentEnd"`
+}
+
+// IncidentLabel is a label associated with an Incident.
 type IncidentLabel struct {
-			
-				
- 					// Label is the text of the label.
-Label string `json:"label"`
-				
-			
-				
- 					// Description is a short explanation of the label.
-Description string `json:"description"`
-				
-			
-				
- 					// Color is the CSS hex color of the label. Labels show up in both light and dark
-// modes, and this should be taken into consideration when selecting a color.
-ColorHex string `json:"colorHex"`
-				
-			
-			}
-		
-	
-	
-		// IncidentRole represents a person involved in an Incident.
+
+	// Label is the text of the label.
+	Label string `json:"label"`
+
+	// Description is a short explanation of the label.
+	Description string `json:"description"`
+
+	// Color is the CSS hex color of the label. Labels show up in both light and dark
+	// modes, and this should be taken into consideration when selecting a color.
+	ColorHex string `json:"colorHex"`
+}
+
+// IncidentRole represents a person involved in an Incident.
 type IncidentRole struct {
-			
-				
- 					// Role is the unique name that describes the activity of the person.
-Role string `json:"role"`
-				
-			
-				
- 					// Description is a short explanation of the role.
-Description string `json:"description"`
-				
-			
-				
- 					// MaxPeople is the maximum number of people that can be assigned to this role.
-// If zero, then there is no limit. Usually it's 0 or 1.
-MaxPeople int `json:"maxPeople"`
-				
-			
-				
- 					// Mandatory indicates if a Role is mandatory or not. Users will be bugged to fill
-// Mandatory roles.
-Mandatory bool `json:"mandatory"`
-				
-			
-				
- 					// ImportantRole indicates if a role is important or not. Users in an important
-// role cannot be assigned to a non-important one.
-Important bool `json:"important"`
-				
-			
-				
- 					// User is the person who holds this role.
-User UserPreview `json:"user"`
-				
-			
-			}
-		
-	
-	
-		// IncidentsQuery is the query for the QueryIncidentsRequest.
+
+	// Role is the unique name that describes the activity of the person.
+	Role string `json:"role"`
+
+	// Description is a short explanation of the role.
+	Description string `json:"description"`
+
+	// MaxPeople is the maximum number of people that can be assigned to this role.
+	// If zero, then there is no limit. Usually it's 0 or 1.
+	MaxPeople int `json:"maxPeople"`
+
+	// Mandatory indicates if a Role is mandatory or not. Users will be bugged to fill
+	// Mandatory roles.
+	Mandatory bool `json:"mandatory"`
+
+	// ImportantRole indicates if a role is important or not. Users in an important
+	// role cannot be assigned to a non-important one.
+	Important bool `json:"important"`
+
+	// User is the person who holds this role.
+	User UserPreview `json:"user"`
+}
+
+// IncidentsQuery is the query for the QueryIncidentsRequest.
 type IncidentsQuery struct {
-			
-				
- 					// Limit is the number of Incidents to return.
-Limit int `json:"limit"`
-				
-			
-				
- 					// IncludeStatuses is a list of statuses to include. Only Incidents with the listed
-// statuses will be returned.
-IncludeStatuses []string `json:"includeStatuses"`
-				
-			
-				
- 					// ExcludeStatuses is a list of statuses to exclude. All Incidents that do not
-// match any of these values will be returned.
-ExcludeStatuses []string `json:"excludeStatuses"`
-				
-			
-				
- 					// IncidentLabels is a list of labels to include. An empty list will not filter by
-// labels.
-IncidentLabels []string `json:"incidentLabels"`
-				
-			
-				
- 					// DateFrom if is not empty would filter by the Incidents created since that date
-// (time.RFC3339)
-DateFrom string `json:"dateFrom"`
-				
-			
-				
- 					// DateTo if is not empty would filter by incidents created before that date
-// (time.RFC3339)
-DateTo string `json:"dateTo"`
-				
-			
-				
- 					// OnlyDrills if is not empty filters by whether an incident is a drill or not.
-OnlyDrills bool `json:"onlyDrills"`
-				
-			
-				
- 					// OrderDirection is the direction to order the results.
-OrderDirection string `json:"orderDirection"`
-				
-			
-				
- 					// Severity is a list of statuses to include. Only Incidents with the listed
-// statuses will be returned.
-Severity string `json:"severity"`
-				
-			
-				
- 					// QueryString is the query string to search for. If provided, the query will be
-// filtered by the query string and the other query parameters will be ignored.
-QueryString string `json:"queryString"`
-				
-			
-			}
-		
-	
-	
-		// QueryIncidentsRequest is the request for the QueryIncidents call.
+
+	// Limit is the number of Incidents to return.
+	Limit int `json:"limit"`
+
+	// IncludeStatuses is a list of statuses to include. Only Incidents with the listed
+	// statuses will be returned.
+	IncludeStatuses []string `json:"includeStatuses"`
+
+	// ExcludeStatuses is a list of statuses to exclude. All Incidents that do not
+	// match any of these values will be returned.
+	ExcludeStatuses []string `json:"excludeStatuses"`
+
+	// IncidentLabels is a list of labels to include. An empty list will not filter by
+	// labels.
+	IncidentLabels []string `json:"incidentLabels"`
+
+	// DateFrom if is not empty would filter by the Incidents created since that date
+	// (time.RFC3339)
+	DateFrom string `json:"dateFrom"`
+
+	// DateTo if is not empty would filter by incidents created before that date
+	// (time.RFC3339)
+	DateTo string `json:"dateTo"`
+
+	// OnlyDrills if is not empty filters by whether an incident is a drill or not.
+	OnlyDrills bool `json:"onlyDrills"`
+
+	// OrderDirection is the direction to order the results.
+	OrderDirection string `json:"orderDirection"`
+
+	// Severity is a list of statuses to include. Only Incidents with the listed
+	// statuses will be returned.
+	Severity string `json:"severity"`
+
+	// QueryString is the query string to search for. If provided, the query will be
+	// filtered by the query string and the other query parameters will be ignored.
+	QueryString string `json:"queryString"`
+}
+
+// QueryIncidentsRequest is the request for the QueryIncidents call.
 type QueryIncidentsRequest struct {
-			
-				
- 					// Query describes the query to make.
-Query IncidentsQuery `json:"query"`
-				
-			
-				
- 					// Cursor is used to page through results. Empty for the first page. For subsequent
-// pages, use previously returned Cursor values.
-Cursor Cursor `json:"cursor"`
-				
-			
-			}
-		
-	
-	
-		// QueryIncidentsResponse is the response for the QueryIncidents call.
+
+	// Query describes the query to make.
+	Query IncidentsQuery `json:"query"`
+
+	// Cursor is used to page through results. Empty for the first page. For subsequent
+	// pages, use previously returned Cursor values.
+	Cursor Cursor `json:"cursor"`
+}
+
+// QueryIncidentsResponse is the response for the QueryIncidents call.
 type QueryIncidentsResponse struct {
-			
-				
- 					// Incidents is a list of Incidents.
-Incidents []Incident `json:"incidents"`
-				
-			
-				
- 					// Query is the query that was used to generate this response.
-Query IncidentsQuery `json:"query"`
-				
-			
-				
- 					// Cursor should be passed back to get the next page of results.
-Cursor Cursor `json:"cursor"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// RemoveLabelRequest is the request for the RemoveLabel call.
+
+	// Incidents is a list of Incidents.
+	Incidents []Incident `json:"incidents"`
+
+	// Query is the query that was used to generate this response.
+	Query IncidentsQuery `json:"query"`
+
+	// Cursor should be passed back to get the next page of results.
+	Cursor Cursor `json:"cursor"`
+}
+
+// RemoveLabelRequest is the request for the RemoveLabel call.
 type RemoveLabelRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Label is the new label of the Incident.
-Label IncidentLabel `json:"label"`
-				
-			
-			}
-		
-	
-	
-		// RemoveLabelResponse is the response for the RemoveLabel call.
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Label is the new label of the Incident.
+	Label IncidentLabel `json:"label"`
+}
+
+// RemoveLabelResponse is the response for the RemoveLabel call.
 type RemoveLabelResponse struct {
-			
-				
- 					// Incident is the Incident that was just modified.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// Task is an individual task that somebody will do to resolve an Incident.
+
+	// Incident is the Incident that was just modified.
+	Incident Incident `json:"incident"`
+}
+
+// Task is an individual task that somebody will do to resolve an Incident.
 type Task struct {
-			
-				
- 					// TaskID is the ID of the task.
-TaskID string `json:"taskID"`
-				
-			
-				
- 					// Immutable is true if the task cannot be changed. Used for tasks created and
-// maintained by the system (like role assignment tasks).
-Immutable bool `json:"immutable"`
-				
-			
-				
- 					// CreatedTime is the time the task was created.
-CreatedTime string `json:"createdTime"`
-				
-			
-				
- 					// ModifiedTime is the time
-ModifiedTime string `json:"modifiedTime"`
-				
-			
-				
- 					// Text is the string that describes the Task.
-Text string `json:"text"`
-				
-			
-				
- 					// Status os the status of this task.
-Status string `json:"status"`
-				
-			
-				
- 					// AuthorUser is the person who created this task.
-AuthorUser *UserPreview `json:"authorUser"`
-				
-			
-				
- 					// AssignedUser is the person this task is assigned to.
-AssignedUser *UserPreview `json:"assignedUser"`
-				
-			
-			}
-		
-	
-	
-		// TaskList is a list of tasks.
+
+	// TaskID is the ID of the task.
+	TaskID string `json:"taskID"`
+
+	// Immutable is true if the task cannot be changed. Used for tasks created and
+	// maintained by the system (like role assignment tasks).
+	Immutable bool `json:"immutable"`
+
+	// CreatedTime is the time the task was created.
+	CreatedTime string `json:"createdTime"`
+
+	// ModifiedTime is the time
+	ModifiedTime string `json:"modifiedTime"`
+
+	// Text is the string that describes the Task.
+	Text string `json:"text"`
+
+	// Status os the status of this task.
+	Status string `json:"status"`
+
+	// AuthorUser is the person who created this task.
+	AuthorUser *UserPreview `json:"authorUser"`
+
+	// AssignedUser is the person this task is assigned to.
+	AssignedUser *UserPreview `json:"assignedUser"`
+}
+
+// TaskList is a list of tasks.
 type TaskList struct {
-			
-				
- 					// Tasks is a list of tasks.
-Tasks []Task `json:"tasks"`
-				
-			
-				
- 					// TodoCount is the number of items in the list that are not yet done.
-TodoCount int `json:"todoCount"`
-				
-			
-				
- 					// DoneCount is the number of items in the list that are done.
-DoneCount int `json:"doneCount"`
-				
-			
-			}
-		
-	
-	
-		// UnassignRoleRequest is the request for the UnassignRole call.
+
+	// Tasks is a list of tasks.
+	Tasks []Task `json:"tasks"`
+
+	// TodoCount is the number of items in the list that are not yet done.
+	TodoCount int `json:"todoCount"`
+
+	// DoneCount is the number of items in the list that are done.
+	DoneCount int `json:"doneCount"`
+}
+
+// UnassignRoleRequest is the request for the UnassignRole call.
 type UnassignRoleRequest struct {
-			
-				
- 					// IncidentID is the identifier.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// UserID is the identifier of the person to assign the role to.
-UserID string `json:"userID"`
-				
-			
-				
- 					// Role is the role of this person.
-Role string `json:"role"`
-				
-			
-			}
-		
-	
-	
-		// UnassignRoleResponse is the response for the UnassignRole call.
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// UserID is the identifier of the person to assign the role to.
+	UserID string `json:"userID"`
+
+	// Role is the role of this person.
+	Role string `json:"role"`
+}
+
+// UnassignRoleResponse is the response for the UnassignRole call.
 type UnassignRoleResponse struct {
-			
-				
- 					// Incident is the Incident that was just updated.
-Incident Incident `json:"incident"`
-				
-			
-				
- 					// DidChange indicates if the role was changed or not. If the role was not
-// assigned, this will be false.
-DidChange bool `json:"didChange"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// UpdateIncidentEventTimeRequest is the request for the UpdateIncidentEventTime
+
+	// Incident is the Incident that was just updated.
+	Incident Incident `json:"incident"`
+
+	// DidChange indicates if the role was changed or not. If the role was not
+	// assigned, this will be false.
+	DidChange bool `json:"didChange"`
+}
+
+// UpdateIncidentEventTimeRequest is the request for the UpdateIncidentEventTime
 // call.
 type UpdateIncidentEventTimeRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// EventTime is the new time for IncidentEnd or IncidentStart.
-EventTime string `json:"eventTime"`
-				
-			
-				
- 					// ActivityItemKind is either the IncidentEnd or incidentStart time.
-ActivityItemKind string `json:"activityItemKind"`
-				
-			
-			}
-		
-	
-	
-		type UpdateIncidentEventTimeResponse struct {
-			
-				
-			
-			}
-		
-	
-	
-		type UpdateIncidentIsDrillRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// IsDrill indicates whether the Incident is a drill or not.
-IsDrill bool `json:"isDrill"`
-				
-			
-			}
-		
-	
-	
-		type UpdateIncidentIsDrillResponse struct {
-			
-				
- 					// Incident is the Incident that was just modified.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// UpdateSeverityRequest is the request for the UpdateSeverity call.
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// EventTime is the new time for IncidentEnd or IncidentStart.
+	EventTime string `json:"eventTime"`
+
+	// ActivityItemKind is either the IncidentEnd or incidentStart time.
+	ActivityItemKind string `json:"activityItemKind"`
+}
+
+type UpdateIncidentEventTimeResponse struct {
+}
+
+type UpdateIncidentIsDrillRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// IsDrill indicates whether the Incident is a drill or not.
+	IsDrill bool `json:"isDrill"`
+}
+
+type UpdateIncidentIsDrillResponse struct {
+
+	// Incident is the Incident that was just modified.
+	Incident Incident `json:"incident"`
+}
+
+// UpdateSeverityRequest is the request for the UpdateSeverity call.
 type UpdateSeverityRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Severity expresses how bad the Incident is.
-Severity string `json:"severity"`
-				
-			
-			}
-		
-	
-	
-		// UpdateSeverityResponse is the response for the UpdateSeverity call.
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Severity expresses how bad the Incident is.
+	Severity string `json:"severity"`
+}
+
+// UpdateSeverityResponse is the response for the UpdateSeverity call.
 type UpdateSeverityResponse struct {
-			
-				
- 					// Incident is the Incident that was just modified.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// UpdateStatusRequest is the request for the UpdateStatus call.
+
+	// Incident is the Incident that was just modified.
+	Incident Incident `json:"incident"`
+}
+
+// UpdateStatusRequest is the request for the UpdateStatus call.
 type UpdateStatusRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Status is the new status of the Incident.
-Status string `json:"status"`
-				
-			
-			}
-		
-	
-	
-		// UpdateStatusResponse is the response for the UpdateStatus call.
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Status is the new status of the Incident.
+	Status string `json:"status"`
+}
+
+// UpdateStatusResponse is the response for the UpdateStatus call.
 type UpdateStatusResponse struct {
-			
-				
- 					// Incident is the Incident that was just modified.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		type UpdateTaskStatusRequest struct {
-			
-				
- 					// IncidentID is the ID of the Incident to add the Task to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// TaskID is the ID of the Task to update.
-TaskID string `json:"taskID"`
-				
-			
-				
- 					// Status is the new status of this task.
-Status string `json:"status"`
-				
-			
-			}
-		
-	
-	
-		type UpdateTaskStatusResponse struct {
-			
-				
- 					// IncidentID is the ID of the incident these tasks relate to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Task is the newly added Task. It will also appear in Tasks.
-Task Task `json:"task"`
-				
-			
-				
- 					// TaskList is the tasks list.
-TaskList TaskList `json:"taskList"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		type UpdateTaskTextRequest struct {
-			
-				
- 					// IncidentID is the ID of the Incident to add the Task to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// TaskID is the ID of the task.
-TaskID string `json:"taskID"`
-				
-			
-				
- 					// Text is the string that describes the Task.
-Text string `json:"text"`
-				
-			
-			}
-		
-	
-	
-		type UpdateTaskTextResponse struct {
-			
-				
- 					// IncidentID is the ID of the incident these tasks relate to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Task is the newly added Task. It will also appear in Tasks.
-Task Task `json:"task"`
-				
-			
-				
- 					// TaskList is the tasks list.
-TaskList TaskList `json:"taskList"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		type UpdateTaskUserRequest struct {
-			
-				
- 					// IncidentID is the ID of the Incident to add the Task to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// TaskID is the ID of the Task to update.
-TaskID string `json:"taskID"`
-				
-			
-				
- 					// UserID is the ID of the User to assign to the Task.
-UserID string `json:"userID"`
-				
-			
-			}
-		
-	
-	
-		type UpdateTaskUserResponse struct {
-			
-				
- 					// IncidentID is the ID of the incident these tasks relate to.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Task is the newly added Task. It will also appear in Tasks.
-Task Task `json:"task"`
-				
-			
-				
- 					// TaskList is the tasks list.
-TaskList TaskList `json:"taskList"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// UpdateTitleRequest is the request for the UpdateTitle call.
+
+	// Incident is the Incident that was just modified.
+	Incident Incident `json:"incident"`
+}
+
+type UpdateTaskStatusRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the Task to update.
+	TaskID string `json:"taskID"`
+
+	// Status is the new status of this task.
+	Status string `json:"status"`
+}
+
+type UpdateTaskStatusResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
+type UpdateTaskTextRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the task.
+	TaskID string `json:"taskID"`
+
+	// Text is the string that describes the Task.
+	Text string `json:"text"`
+}
+
+type UpdateTaskTextResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
+type UpdateTaskUserRequest struct {
+
+	// IncidentID is the ID of the Incident to add the Task to.
+	IncidentID string `json:"incidentID"`
+
+	// TaskID is the ID of the Task to update.
+	TaskID string `json:"taskID"`
+
+	// UserID is the ID of the User to assign to the Task.
+	UserID string `json:"userID"`
+}
+
+type UpdateTaskUserResponse struct {
+
+	// IncidentID is the ID of the incident these tasks relate to.
+	IncidentID string `json:"incidentID"`
+
+	// Task is the newly added Task. It will also appear in Tasks.
+	Task Task `json:"task"`
+
+	// TaskList is the tasks list.
+	TaskList TaskList `json:"taskList"`
+}
+
+// UpdateTitleRequest is the request for the UpdateTitle call.
 type UpdateTitleRequest struct {
-			
-				
- 					// IncidentID is the identifier of the Incident.
-IncidentID string `json:"incidentID"`
-				
-			
-				
- 					// Title is the new title of the Incident.
-Title string `json:"title"`
-				
-			
-			}
-		
-	
-	
-		// UpdateTitleResponse is the response for the UpdateTitle call.
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Title is the new title of the Incident.
+	Title string `json:"title"`
+}
+
+// UpdateTitleResponse is the response for the UpdateTitle call.
 type UpdateTitleResponse struct {
-			
-				
- 					// Incident is the Incident that was just modified.
-Incident Incident `json:"incident"`
-				
-			
-				
-			
-			}
-		
-	
-	
-		// UserPreview is a user involved in an Incident.
+
+	// Incident is the Incident that was just modified.
+	Incident Incident `json:"incident"`
+}
+
+// UserPreview is a user involved in an Incident.
 type UserPreview struct {
-			
-				
- 					// UserID is the identifier for the user.
-UserID string `json:"userID"`
-				
-			
-				
- 					// Name is a human readable string that represents the user.
-Name string `json:"name"`
-				
-			
-				
- 					// PhotoURL is the URL to the profile picture of the user.
-PhotoURL string `json:"photoURL"`
-				
-			
-			}
-		
-	
-	
-		// WebhookIncident represents the webhook HTTP POST body and contains metadata for
+
+	// UserID is the identifier for the user.
+	UserID string `json:"userID"`
+
+	// Name is a human readable string that represents the user.
+	Name string `json:"name"`
+
+	// PhotoURL is the URL to the profile picture of the user.
+	PhotoURL string `json:"photoURL"`
+}
+
+// WebhookIncident represents the webhook HTTP POST body and contains metadata for
 // the webhook.
 type WebhookIncident struct {
-			
-				
- 					// Version of this structure, following semantic versioning.
-Version string `json:"version"`
-				
-			
-				
- 					// ID of event.
-ID string `json:"id"`
-				
-			
-				
- 					// Source is a URI that identifies the context in which an event happened.
-Source string `json:"source"`
-				
-			
-				
- 					// Time that event was generated (RFC 3339).
-Time string `json:"time"`
-				
-			
-				
- 					// Event describes the (namespaced) event
-Event string `json:"event"`
-				
-			
-				
- 					// Incident is the data payload, contains details about the data that was changed.
-Incident *Incident `json:"incident"`
-				
-			
-			}
-		
-	
 
+	// Version of this structure, following semantic versioning.
+	Version string `json:"version"`
 
+	// ID of event.
+	ID string `json:"id"`
+
+	// Source is a URI that identifies the context in which an event happened.
+	Source string `json:"source"`
+
+	// Time that event was generated (RFC 3339).
+	Time string `json:"time"`
+
+	// Event describes the (namespaced) event
+	Event string `json:"event"`
+
+	// Incident is the data payload, contains details about the data that was changed.
+	Incident *Incident `json:"incident"`
+}
 
 // IncidentsService provides the ability to query, get, declare (create), update,
 // and manage Incidents programatically. You can also manage roles and labels.
@@ -1154,7 +700,6 @@ func NewIncidentsService(client *Client) *IncidentsService {
 		client: client,
 	}
 }
-
 
 // AddLabel adds a label to the Incident.
 func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*AddLabelResponse, error) {
@@ -1876,7 +1421,6 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 	return &response.UpdateTitleResponse, nil
 }
 
-
 // TasksService provides methods for managing tasks relating to Incidents.
 // Get one by calling NewTasksService.
 type TasksService struct {
@@ -1889,7 +1433,6 @@ func NewTasksService(client *Client) *TasksService {
 		client: client,
 	}
 }
-
 
 // AddTask adds a task to an Incident.
 func (s *TasksService) AddTask(ctx context.Context, r AddTaskRequest) (*AddTaskResponse, error) {
@@ -2191,10 +1734,6 @@ func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserReque
 	}
 	return &response.UpdateTaskUserResponse, nil
 }
-
-
-
-
 
 func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 	exampleJSON := `{
@@ -3567,8 +3106,6 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 	return &dest, nil
 }
 
-
-
 func (s *TasksService) stubAddTask() (*AddTaskResponse, error) {
 	exampleJSON := `{
 	"error": "something went wrong",
@@ -3911,1931 +3448,1245 @@ func (s *TasksService) stubUpdateTaskUser() (*UpdateTaskUserResponse, error) {
 	return &dest, nil
 }
 
+// AddLabelRequestFields holds metadata about fields for AddLabelRequest.
+var AddLabelRequestFields struct {
 
+	// IncidentID == "incidentID"
+	IncidentID string
 
+	// Label == "label"
+	Label string
+}
 
-	
-		// AddLabelRequestFields holds metadata about fields for AddLabelRequest.
-		var AddLabelRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Label == "label"
-				Label string
-				
-			
-		}
-	
+// AddLabelResponseFields holds metadata about fields for AddLabelResponse.
+var AddLabelResponseFields struct {
 
-	
-		// AddLabelResponseFields holds metadata about fields for AddLabelResponse.
-		var AddLabelResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// Incident == "incident"
+	Incident string
 
-	
-		// AddTaskRequestFields holds metadata about fields for AddTaskRequest.
-		var AddTaskRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Text == "text"
-				Text string
-				
-			
-				// AssignToUserId == "assignToUserID"
-				AssignToUserId string
-				
-			
-		}
-	
+	// Error == "error"
+	Error string
+}
 
-	
-		// AddTaskResponseFields holds metadata about fields for AddTaskResponse.
-		var AddTaskResponseFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Task == "task"
-				Task string
-				
-			
-				// TaskList == "taskList"
-				TaskList string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+// AddTaskRequestFields holds metadata about fields for AddTaskRequest.
+var AddTaskRequestFields struct {
 
-	
-		// AssignRoleRequestFields holds metadata about fields for AssignRoleRequest.
-		var AssignRoleRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// UserID == "userID"
-				UserID string
-				
-			
-				// Role == "role"
-				Role string
-				
-					// RoleOptions contains the acceptable values for the
-					// AssignRoleRequest.Role field.
-					RoleOptions struct {
-						
-							// Commander == "commander"
-							Commander string
-						
-							// Investigator == "investigator"
-							Investigator string
-						
-							// Observer == "observer"
-							Observer string
-						
-					}
-				
-			
-		}
-	
+	// IncidentID == "incidentID"
+	IncidentID string
 
-	
-		// AssignRoleResponseFields holds metadata about fields for AssignRoleResponse.
-		var AssignRoleResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// DidChange == "didChange"
-				DidChange string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// Text == "text"
+	Text string
 
-	
-		// CreateIncidentRequestFields holds metadata about fields for CreateIncidentRequest.
-		var CreateIncidentRequestFields struct {
-			
-				// Title == "title"
-				Title string
-				
-			
-				// Severity == "severity"
-				Severity string
-				
-					// SeverityOptions contains the acceptable values for the
-					// CreateIncidentRequest.Severity field.
-					SeverityOptions struct {
-						
-							// Pending == "pending"
-							Pending string
-						
-							// Minor == "minor"
-							Minor string
-						
-							// Major == "major"
-							Major string
-						
-							// Critical == "critical"
-							Critical string
-						
-					}
-				
-			
-				// Labels == "labels"
-				Labels string
-				
-			
-				// RoomPrefix == "roomPrefix"
-				RoomPrefix string
-				
-			
-				// IsDrill == "isDrill"
-				IsDrill string
-				
-			
-				// Status == "status"
-				Status string
-				
-					// StatusOptions contains the acceptable values for the
-					// CreateIncidentRequest.Status field.
-					StatusOptions struct {
-						
-							// Active == "active"
-							Active string
-						
-							// Resolved == "resolved"
-							Resolved string
-						
-					}
-				
-			
-				// AttachCaption == "attachCaption"
-				AttachCaption string
-				
-			
-				// AttachURL == "attachURL"
-				AttachURL string
-				
-			
-		}
-	
+	// AssignToUserId == "assignToUserID"
+	AssignToUserId string
+}
 
-	
-		// CreateIncidentResponseFields holds metadata about fields for CreateIncidentResponse.
-		var CreateIncidentResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+// AddTaskResponseFields holds metadata about fields for AddTaskResponse.
+var AddTaskResponseFields struct {
 
-	
-		// CursorFields holds metadata about fields for Cursor.
-		var CursorFields struct {
-			
-				// NextValue == "nextValue"
-				NextValue string
-				
-			
-				// HasMore == "hasMore"
-				HasMore string
-				
-			
-		}
-	
+	// IncidentID == "incidentID"
+	IncidentID string
 
-	
-		// DeleteTaskRequestFields holds metadata about fields for DeleteTaskRequest.
-		var DeleteTaskRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// TaskID == "taskID"
-				TaskID string
-				
-			
-		}
-	
+	// Task == "task"
+	Task string
 
-	
-		// DeleteTaskResponseFields holds metadata about fields for DeleteTaskResponse.
-		var DeleteTaskResponseFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// TaskList == "taskList"
-				TaskList string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// TaskList == "taskList"
+	TaskList string
 
-	
-		// GetHomescreenVersionRequestFields holds metadata about fields for GetHomescreenVersionRequest.
-		var GetHomescreenVersionRequestFields struct {
-			
-		}
-	
+	// Error == "error"
+	Error string
+}
 
-	
-		// GetHomescreenVersionResponseFields holds metadata about fields for GetHomescreenVersionResponse.
-		var GetHomescreenVersionResponseFields struct {
-			
-				// Version == "version"
-				Version string
-				
-			
-		}
-	
+// AssignRoleRequestFields holds metadata about fields for AssignRoleRequest.
+var AssignRoleRequestFields struct {
 
-	
-		// GetIncidentRequestFields holds metadata about fields for GetIncidentRequest.
-		var GetIncidentRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-		}
-	
+	// IncidentID == "incidentID"
+	IncidentID string
 
-	
-		// GetIncidentResponseFields holds metadata about fields for GetIncidentResponse.
-		var GetIncidentResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// UserID == "userID"
+	UserID string
 
-	
-		// GetIncidentVersionRequestFields holds metadata about fields for GetIncidentVersionRequest.
-		var GetIncidentVersionRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-		}
-	
+	// Role == "role"
+	Role string
 
-	
-		// GetIncidentVersionResponseFields holds metadata about fields for GetIncidentVersionResponse.
-		var GetIncidentVersionResponseFields struct {
-			
-				// Version == "version"
-				Version string
-				
-			
-		}
-	
+	// RoleOptions contains the acceptable values for the
+	// AssignRoleRequest.Role field.
+	RoleOptions struct {
 
-	
-		// IncidentFields holds metadata about fields for Incident.
-		var IncidentFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Severity == "severity"
-				Severity string
-				
-					// SeverityOptions contains the acceptable values for the
-					// Incident.Severity field.
-					SeverityOptions struct {
-						
-							// Pending == "pending"
-							Pending string
-						
-							// Minor == "minor"
-							Minor string
-						
-							// Major == "major"
-							Major string
-						
-							// Critical == "critical"
-							Critical string
-						
-					}
-				
-			
-				// Labels == "labels"
-				Labels string
-				
-			
-				// IsDrill == "isDrill"
-				IsDrill string
-				
-			
-				// CreatedTime == "createdTime"
-				CreatedTime string
-				
-			
-				// ModifiedTime == "modifiedTime"
-				ModifiedTime string
-				
-			
-				// CreatedByUser == "createdByUser"
-				CreatedByUser string
-				
-			
-				// ClosedTime == "closedTime"
-				ClosedTime string
-				
-			
-				// DurationSeconds == "durationSeconds"
-				DurationSeconds string
-				
-			
-				// Status == "status"
-				Status string
-				
-					// StatusOptions contains the acceptable values for the
-					// Incident.Status field.
-					StatusOptions struct {
-						
-							// Active == "active"
-							Active string
-						
-							// Resolved == "resolved"
-							Resolved string
-						
-					}
-				
-			
-				// Title == "title"
-				Title string
-				
-			
-				// OverviewURL == "overviewURL"
-				OverviewURL string
-				
-			
-				// Roles == "roles"
-				Roles string
-				
-			
-				// TaskList == "taskList"
-				TaskList string
-				
-			
-				// Summary == "summary"
-				Summary string
-				
-			
-				// HeroImagePath == "heroImagePath"
-				HeroImagePath string
-				
-			
-				// IncidentStart == "incidentStart"
-				IncidentStart string
-				
-			
-				// IncidentEnd == "incidentEnd"
-				IncidentEnd string
-				
-			
-		}
-	
+		// Commander == "commander"
+		Commander string
 
-	
-		// IncidentLabelFields holds metadata about fields for IncidentLabel.
-		var IncidentLabelFields struct {
-			
-				// Label == "label"
-				Label string
-				
-			
-				// Description == "description"
-				Description string
-				
-			
-				// ColorHex == "colorHex"
-				ColorHex string
-				
-			
-		}
-	
+		// Investigator == "investigator"
+		Investigator string
 
-	
-		// IncidentRoleFields holds metadata about fields for IncidentRole.
-		var IncidentRoleFields struct {
-			
-				// Role == "role"
-				Role string
-				
-					// RoleOptions contains the acceptable values for the
-					// IncidentRole.Role field.
-					RoleOptions struct {
-						
-							// Commander == "commander"
-							Commander string
-						
-							// Investigator == "investigator"
-							Investigator string
-						
-							// Observer == "observer"
-							Observer string
-						
-					}
-				
-			
-				// Description == "description"
-				Description string
-				
-			
-				// MaxPeople == "maxPeople"
-				MaxPeople string
-				
-			
-				// Mandatory == "mandatory"
-				Mandatory string
-				
-			
-				// Important == "important"
-				Important string
-				
-			
-				// User == "user"
-				User string
-				
-			
-		}
-	
+		// Observer == "observer"
+		Observer string
+	}
+}
 
-	
-		// IncidentsQueryFields holds metadata about fields for IncidentsQuery.
-		var IncidentsQueryFields struct {
-			
-				// Limit == "limit"
-				Limit string
-				
-			
-				// IncludeStatuses == "includeStatuses"
-				IncludeStatuses string
-				
-					// IncludeStatusesOptions contains the acceptable values for the
-					// IncidentsQuery.IncludeStatuses field.
-					IncludeStatusesOptions struct {
-						
-							// Active == "active"
-							Active string
-						
-							// Resolved == "resolved"
-							Resolved string
-						
-					}
-				
-			
-				// ExcludeStatuses == "excludeStatuses"
-				ExcludeStatuses string
-				
-					// ExcludeStatusesOptions contains the acceptable values for the
-					// IncidentsQuery.ExcludeStatuses field.
-					ExcludeStatusesOptions struct {
-						
-							// Active == "active"
-							Active string
-						
-							// Resolved == "resolved"
-							Resolved string
-						
-					}
-				
-			
-				// IncidentLabels == "incidentLabels"
-				IncidentLabels string
-				
-			
-				// DateFrom == "dateFrom"
-				DateFrom string
-				
-			
-				// DateTo == "dateTo"
-				DateTo string
-				
-			
-				// OnlyDrills == "onlyDrills"
-				OnlyDrills string
-				
-			
-				// OrderDirection == "orderDirection"
-				OrderDirection string
-				
-					// OrderDirectionOptions contains the acceptable values for the
-					// IncidentsQuery.OrderDirection field.
-					OrderDirectionOptions struct {
-						
-							// ASC == "ASC"
-							ASC string
-						
-							// DESC == "DESC"
-							DESC string
-						
-					}
-				
-			
-				// Severity == "severity"
-				Severity string
-				
-			
-				// QueryString == "queryString"
-				QueryString string
-				
-			
-		}
-	
+// AssignRoleResponseFields holds metadata about fields for AssignRoleResponse.
+var AssignRoleResponseFields struct {
 
-	
-		// QueryIncidentsRequestFields holds metadata about fields for QueryIncidentsRequest.
-		var QueryIncidentsRequestFields struct {
-			
-				// Query == "query"
-				Query string
-				
-			
-				// Cursor == "cursor"
-				Cursor string
-				
-			
-		}
-	
+	// Incident == "incident"
+	Incident string
 
-	
-		// QueryIncidentsResponseFields holds metadata about fields for QueryIncidentsResponse.
-		var QueryIncidentsResponseFields struct {
-			
-				// Incidents == "incidents"
-				Incidents string
-				
-			
-				// Query == "query"
-				Query string
-				
-			
-				// Cursor == "cursor"
-				Cursor string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// DidChange == "didChange"
+	DidChange string
 
-	
-		// RemoveLabelRequestFields holds metadata about fields for RemoveLabelRequest.
-		var RemoveLabelRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Label == "label"
-				Label string
-				
-			
-		}
-	
+	// Error == "error"
+	Error string
+}
 
-	
-		// RemoveLabelResponseFields holds metadata about fields for RemoveLabelResponse.
-		var RemoveLabelResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+// CreateIncidentRequestFields holds metadata about fields for CreateIncidentRequest.
+var CreateIncidentRequestFields struct {
 
-	
-		// TaskFields holds metadata about fields for Task.
-		var TaskFields struct {
-			
-				// TaskID == "taskID"
-				TaskID string
-				
-			
-				// Immutable == "immutable"
-				Immutable string
-				
-			
-				// CreatedTime == "createdTime"
-				CreatedTime string
-				
-			
-				// ModifiedTime == "modifiedTime"
-				ModifiedTime string
-				
-			
-				// Text == "text"
-				Text string
-				
-			
-				// Status == "status"
-				Status string
-				
-					// StatusOptions contains the acceptable values for the
-					// Task.Status field.
-					StatusOptions struct {
-						
-							// Todo == "todo"
-							Todo string
-						
-							// Progress == "progress"
-							Progress string
-						
-							// Done == "done"
-							Done string
-						
-					}
-				
-			
-				// AuthorUser == "authorUser"
-				AuthorUser string
-				
-			
-				// AssignedUser == "assignedUser"
-				AssignedUser string
-				
-			
-		}
-	
+	// Title == "title"
+	Title string
 
-	
-		// TaskListFields holds metadata about fields for TaskList.
-		var TaskListFields struct {
-			
-				// Tasks == "tasks"
-				Tasks string
-				
-			
-				// TodoCount == "todoCount"
-				TodoCount string
-				
-			
-				// DoneCount == "doneCount"
-				DoneCount string
-				
-			
-		}
-	
+	// Severity == "severity"
+	Severity string
 
-	
-		// UnassignRoleRequestFields holds metadata about fields for UnassignRoleRequest.
-		var UnassignRoleRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// UserID == "userID"
-				UserID string
-				
-			
-				// Role == "role"
-				Role string
-				
-					// RoleOptions contains the acceptable values for the
-					// UnassignRoleRequest.Role field.
-					RoleOptions struct {
-						
-							// Commander == "commander"
-							Commander string
-						
-							// Investigator == "investigator"
-							Investigator string
-						
-							// Observer == "observer"
-							Observer string
-						
-					}
-				
-			
-		}
-	
+	// SeverityOptions contains the acceptable values for the
+	// CreateIncidentRequest.Severity field.
+	SeverityOptions struct {
 
-	
-		// UnassignRoleResponseFields holds metadata about fields for UnassignRoleResponse.
-		var UnassignRoleResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// DidChange == "didChange"
-				DidChange string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+		// Pending == "pending"
+		Pending string
 
-	
-		// UpdateIncidentEventTimeRequestFields holds metadata about fields for UpdateIncidentEventTimeRequest.
-		var UpdateIncidentEventTimeRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// EventTime == "eventTime"
-				EventTime string
-				
-			
-				// ActivityItemKind == "activityItemKind"
-				ActivityItemKind string
-				
-					// ActivityItemKindOptions contains the acceptable values for the
-					// UpdateIncidentEventTimeRequest.ActivityItemKind field.
-					ActivityItemKindOptions struct {
-						
-							// IncidentEnd == "incidentEnd"
-							IncidentEnd string
-						
-							// IncidentStart == "incidentStart"
-							IncidentStart string
-						
-					}
-				
-			
-		}
-	
+		// Minor == "minor"
+		Minor string
 
-	
-		// UpdateIncidentEventTimeResponseFields holds metadata about fields for UpdateIncidentEventTimeResponse.
-		var UpdateIncidentEventTimeResponseFields struct {
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+		// Major == "major"
+		Major string
 
-	
-		// UpdateIncidentIsDrillRequestFields holds metadata about fields for UpdateIncidentIsDrillRequest.
-		var UpdateIncidentIsDrillRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// IsDrill == "isDrill"
-				IsDrill string
-				
-			
-		}
-	
+		// Critical == "critical"
+		Critical string
+	}
 
-	
-		// UpdateIncidentIsDrillResponseFields holds metadata about fields for UpdateIncidentIsDrillResponse.
-		var UpdateIncidentIsDrillResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// Labels == "labels"
+	Labels string
 
-	
-		// UpdateSeverityRequestFields holds metadata about fields for UpdateSeverityRequest.
-		var UpdateSeverityRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Severity == "severity"
-				Severity string
-				
-					// SeverityOptions contains the acceptable values for the
-					// UpdateSeverityRequest.Severity field.
-					SeverityOptions struct {
-						
-							// Pending == "pending"
-							Pending string
-						
-							// Minor == "minor"
-							Minor string
-						
-							// Major == "major"
-							Major string
-						
-							// Critical == "critical"
-							Critical string
-						
-					}
-				
-			
-		}
-	
+	// RoomPrefix == "roomPrefix"
+	RoomPrefix string
 
-	
-		// UpdateSeverityResponseFields holds metadata about fields for UpdateSeverityResponse.
-		var UpdateSeverityResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// IsDrill == "isDrill"
+	IsDrill string
 
-	
-		// UpdateStatusRequestFields holds metadata about fields for UpdateStatusRequest.
-		var UpdateStatusRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Status == "status"
-				Status string
-				
-					// StatusOptions contains the acceptable values for the
-					// UpdateStatusRequest.Status field.
-					StatusOptions struct {
-						
-							// Active == "active"
-							Active string
-						
-							// Resolved == "resolved"
-							Resolved string
-						
-					}
-				
-			
-		}
-	
+	// Status == "status"
+	Status string
 
-	
-		// UpdateStatusResponseFields holds metadata about fields for UpdateStatusResponse.
-		var UpdateStatusResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// StatusOptions contains the acceptable values for the
+	// CreateIncidentRequest.Status field.
+	StatusOptions struct {
 
-	
-		// UpdateTaskStatusRequestFields holds metadata about fields for UpdateTaskStatusRequest.
-		var UpdateTaskStatusRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// TaskID == "taskID"
-				TaskID string
-				
-			
-				// Status == "status"
-				Status string
-				
-					// StatusOptions contains the acceptable values for the
-					// UpdateTaskStatusRequest.Status field.
-					StatusOptions struct {
-						
-							// Todo == "todo"
-							Todo string
-						
-							// Progress == "progress"
-							Progress string
-						
-							// Done == "done"
-							Done string
-						
-					}
-				
-			
-		}
-	
+		// Active == "active"
+		Active string
 
-	
-		// UpdateTaskStatusResponseFields holds metadata about fields for UpdateTaskStatusResponse.
-		var UpdateTaskStatusResponseFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Task == "task"
-				Task string
-				
-			
-				// TaskList == "taskList"
-				TaskList string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+		// Resolved == "resolved"
+		Resolved string
+	}
 
-	
-		// UpdateTaskTextRequestFields holds metadata about fields for UpdateTaskTextRequest.
-		var UpdateTaskTextRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// TaskID == "taskID"
-				TaskID string
-				
-			
-				// Text == "text"
-				Text string
-				
-			
-		}
-	
+	// AttachCaption == "attachCaption"
+	AttachCaption string
 
-	
-		// UpdateTaskTextResponseFields holds metadata about fields for UpdateTaskTextResponse.
-		var UpdateTaskTextResponseFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Task == "task"
-				Task string
-				
-			
-				// TaskList == "taskList"
-				TaskList string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// AttachURL == "attachURL"
+	AttachURL string
+}
 
-	
-		// UpdateTaskUserRequestFields holds metadata about fields for UpdateTaskUserRequest.
-		var UpdateTaskUserRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// TaskID == "taskID"
-				TaskID string
-				
-			
-				// UserID == "userID"
-				UserID string
-				
-			
-		}
-	
+// CreateIncidentResponseFields holds metadata about fields for CreateIncidentResponse.
+var CreateIncidentResponseFields struct {
 
-	
-		// UpdateTaskUserResponseFields holds metadata about fields for UpdateTaskUserResponse.
-		var UpdateTaskUserResponseFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Task == "task"
-				Task string
-				
-			
-				// TaskList == "taskList"
-				TaskList string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+	// Incident == "incident"
+	Incident string
 
-	
-		// UpdateTitleRequestFields holds metadata about fields for UpdateTitleRequest.
-		var UpdateTitleRequestFields struct {
-			
-				// IncidentID == "incidentID"
-				IncidentID string
-				
-			
-				// Title == "title"
-				Title string
-				
-			
-		}
-	
+	// Error == "error"
+	Error string
+}
 
-	
-		// UpdateTitleResponseFields holds metadata about fields for UpdateTitleResponse.
-		var UpdateTitleResponseFields struct {
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-				// Error == "error"
-				Error string
-				
-			
-		}
-	
+// CursorFields holds metadata about fields for Cursor.
+var CursorFields struct {
 
-	
-		// UserPreviewFields holds metadata about fields for UserPreview.
-		var UserPreviewFields struct {
-			
-				// UserID == "userID"
-				UserID string
-				
-			
-				// Name == "name"
-				Name string
-				
-			
-				// PhotoURL == "photoURL"
-				PhotoURL string
-				
-			
-		}
-	
+	// NextValue == "nextValue"
+	NextValue string
 
-	
-		// WebhookIncidentFields holds metadata about fields for WebhookIncident.
-		var WebhookIncidentFields struct {
-			
-				// Version == "version"
-				Version string
-				
-			
-				// ID == "id"
-				ID string
-				
-			
-				// Source == "source"
-				Source string
-				
-			
-				// Time == "time"
-				Time string
-				
-			
-				// Event == "event"
-				Event string
-				
-			
-				// Incident == "incident"
-				Incident string
-				
-			
-		}
-	
+	// HasMore == "hasMore"
+	HasMore string
+}
 
+// DeleteTaskRequestFields holds metadata about fields for DeleteTaskRequest.
+var DeleteTaskRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+}
+
+// DeleteTaskResponseFields holds metadata about fields for DeleteTaskResponse.
+var DeleteTaskResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
+}
+
+// GetHomescreenVersionRequestFields holds metadata about fields for GetHomescreenVersionRequest.
+var GetHomescreenVersionRequestFields struct {
+}
+
+// GetHomescreenVersionResponseFields holds metadata about fields for GetHomescreenVersionResponse.
+var GetHomescreenVersionResponseFields struct {
+
+	// Version == "version"
+	Version string
+}
+
+// GetIncidentRequestFields holds metadata about fields for GetIncidentRequest.
+var GetIncidentRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+}
+
+// GetIncidentResponseFields holds metadata about fields for GetIncidentResponse.
+var GetIncidentResponseFields struct {
+
+	// Incident == "incident"
+	Incident string
+
+	// Error == "error"
+	Error string
+}
+
+// GetIncidentVersionRequestFields holds metadata about fields for GetIncidentVersionRequest.
+var GetIncidentVersionRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+}
+
+// GetIncidentVersionResponseFields holds metadata about fields for GetIncidentVersionResponse.
+var GetIncidentVersionResponseFields struct {
+
+	// Version == "version"
+	Version string
+}
+
+// IncidentFields holds metadata about fields for Incident.
+var IncidentFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Severity == "severity"
+	Severity string
+
+	// SeverityOptions contains the acceptable values for the
+	// Incident.Severity field.
+	SeverityOptions struct {
+
+		// Pending == "pending"
+		Pending string
+
+		// Minor == "minor"
+		Minor string
+
+		// Major == "major"
+		Major string
+
+		// Critical == "critical"
+		Critical string
+	}
+
+	// Labels == "labels"
+	Labels string
+
+	// IsDrill == "isDrill"
+	IsDrill string
+
+	// CreatedTime == "createdTime"
+	CreatedTime string
+
+	// ModifiedTime == "modifiedTime"
+	ModifiedTime string
+
+	// CreatedByUser == "createdByUser"
+	CreatedByUser string
+
+	// ClosedTime == "closedTime"
+	ClosedTime string
+
+	// DurationSeconds == "durationSeconds"
+	DurationSeconds string
+
+	// Status == "status"
+	Status string
+
+	// StatusOptions contains the acceptable values for the
+	// Incident.Status field.
+	StatusOptions struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// Title == "title"
+	Title string
+
+	// OverviewURL == "overviewURL"
+	OverviewURL string
+
+	// Roles == "roles"
+	Roles string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Summary == "summary"
+	Summary string
+
+	// HeroImagePath == "heroImagePath"
+	HeroImagePath string
+
+	// IncidentStart == "incidentStart"
+	IncidentStart string
+
+	// IncidentEnd == "incidentEnd"
+	IncidentEnd string
+}
+
+// IncidentLabelFields holds metadata about fields for IncidentLabel.
+var IncidentLabelFields struct {
+
+	// Label == "label"
+	Label string
+
+	// Description == "description"
+	Description string
+
+	// ColorHex == "colorHex"
+	ColorHex string
+}
+
+// IncidentRoleFields holds metadata about fields for IncidentRole.
+var IncidentRoleFields struct {
+
+	// Role == "role"
+	Role string
+
+	// RoleOptions contains the acceptable values for the
+	// IncidentRole.Role field.
+	RoleOptions struct {
+
+		// Commander == "commander"
+		Commander string
+
+		// Investigator == "investigator"
+		Investigator string
+
+		// Observer == "observer"
+		Observer string
+	}
+
+	// Description == "description"
+	Description string
+
+	// MaxPeople == "maxPeople"
+	MaxPeople string
+
+	// Mandatory == "mandatory"
+	Mandatory string
+
+	// Important == "important"
+	Important string
+
+	// User == "user"
+	User string
+}
+
+// IncidentsQueryFields holds metadata about fields for IncidentsQuery.
+var IncidentsQueryFields struct {
+
+	// Limit == "limit"
+	Limit string
+
+	// IncludeStatuses == "includeStatuses"
+	IncludeStatuses string
+
+	// IncludeStatusesOptions contains the acceptable values for the
+	// IncidentsQuery.IncludeStatuses field.
+	IncludeStatusesOptions struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// ExcludeStatuses == "excludeStatuses"
+	ExcludeStatuses string
+
+	// ExcludeStatusesOptions contains the acceptable values for the
+	// IncidentsQuery.ExcludeStatuses field.
+	ExcludeStatusesOptions struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// IncidentLabels == "incidentLabels"
+	IncidentLabels string
+
+	// DateFrom == "dateFrom"
+	DateFrom string
+
+	// DateTo == "dateTo"
+	DateTo string
+
+	// OnlyDrills == "onlyDrills"
+	OnlyDrills string
+
+	// OrderDirection == "orderDirection"
+	OrderDirection string
+
+	// OrderDirectionOptions contains the acceptable values for the
+	// IncidentsQuery.OrderDirection field.
+	OrderDirectionOptions struct {
+
+		// ASC == "ASC"
+		ASC string
+
+		// DESC == "DESC"
+		DESC string
+	}
+
+	// Severity == "severity"
+	Severity string
+
+	// QueryString == "queryString"
+	QueryString string
+}
+
+// QueryIncidentsRequestFields holds metadata about fields for QueryIncidentsRequest.
+var QueryIncidentsRequestFields struct {
+
+	// Query == "query"
+	Query string
+
+	// Cursor == "cursor"
+	Cursor string
+}
+
+// QueryIncidentsResponseFields holds metadata about fields for QueryIncidentsResponse.
+var QueryIncidentsResponseFields struct {
+
+	// Incidents == "incidents"
+	Incidents string
+
+	// Query == "query"
+	Query string
+
+	// Cursor == "cursor"
+	Cursor string
+
+	// Error == "error"
+	Error string
+}
+
+// RemoveLabelRequestFields holds metadata about fields for RemoveLabelRequest.
+var RemoveLabelRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Label == "label"
+	Label string
+}
+
+// RemoveLabelResponseFields holds metadata about fields for RemoveLabelResponse.
+var RemoveLabelResponseFields struct {
+
+	// Incident == "incident"
+	Incident string
+
+	// Error == "error"
+	Error string
+}
+
+// TaskFields holds metadata about fields for Task.
+var TaskFields struct {
+
+	// TaskID == "taskID"
+	TaskID string
+
+	// Immutable == "immutable"
+	Immutable string
+
+	// CreatedTime == "createdTime"
+	CreatedTime string
+
+	// ModifiedTime == "modifiedTime"
+	ModifiedTime string
+
+	// Text == "text"
+	Text string
+
+	// Status == "status"
+	Status string
+
+	// StatusOptions contains the acceptable values for the
+	// Task.Status field.
+	StatusOptions struct {
+
+		// Todo == "todo"
+		Todo string
+
+		// Progress == "progress"
+		Progress string
+
+		// Done == "done"
+		Done string
+	}
+
+	// AuthorUser == "authorUser"
+	AuthorUser string
+
+	// AssignedUser == "assignedUser"
+	AssignedUser string
+}
+
+// TaskListFields holds metadata about fields for TaskList.
+var TaskListFields struct {
+
+	// Tasks == "tasks"
+	Tasks string
+
+	// TodoCount == "todoCount"
+	TodoCount string
+
+	// DoneCount == "doneCount"
+	DoneCount string
+}
+
+// UnassignRoleRequestFields holds metadata about fields for UnassignRoleRequest.
+var UnassignRoleRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// UserID == "userID"
+	UserID string
+
+	// Role == "role"
+	Role string
+
+	// RoleOptions contains the acceptable values for the
+	// UnassignRoleRequest.Role field.
+	RoleOptions struct {
+
+		// Commander == "commander"
+		Commander string
+
+		// Investigator == "investigator"
+		Investigator string
+
+		// Observer == "observer"
+		Observer string
+	}
+}
+
+// UnassignRoleResponseFields holds metadata about fields for UnassignRoleResponse.
+var UnassignRoleResponseFields struct {
+
+	// Incident == "incident"
+	Incident string
+
+	// DidChange == "didChange"
+	DidChange string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateIncidentEventTimeRequestFields holds metadata about fields for UpdateIncidentEventTimeRequest.
+var UpdateIncidentEventTimeRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// EventTime == "eventTime"
+	EventTime string
+
+	// ActivityItemKind == "activityItemKind"
+	ActivityItemKind string
+
+	// ActivityItemKindOptions contains the acceptable values for the
+	// UpdateIncidentEventTimeRequest.ActivityItemKind field.
+	ActivityItemKindOptions struct {
+
+		// IncidentEnd == "incidentEnd"
+		IncidentEnd string
+
+		// IncidentStart == "incidentStart"
+		IncidentStart string
+	}
+}
+
+// UpdateIncidentEventTimeResponseFields holds metadata about fields for UpdateIncidentEventTimeResponse.
+var UpdateIncidentEventTimeResponseFields struct {
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateIncidentIsDrillRequestFields holds metadata about fields for UpdateIncidentIsDrillRequest.
+var UpdateIncidentIsDrillRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// IsDrill == "isDrill"
+	IsDrill string
+}
+
+// UpdateIncidentIsDrillResponseFields holds metadata about fields for UpdateIncidentIsDrillResponse.
+var UpdateIncidentIsDrillResponseFields struct {
+
+	// Incident == "incident"
+	Incident string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateSeverityRequestFields holds metadata about fields for UpdateSeverityRequest.
+var UpdateSeverityRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Severity == "severity"
+	Severity string
+
+	// SeverityOptions contains the acceptable values for the
+	// UpdateSeverityRequest.Severity field.
+	SeverityOptions struct {
+
+		// Pending == "pending"
+		Pending string
+
+		// Minor == "minor"
+		Minor string
+
+		// Major == "major"
+		Major string
+
+		// Critical == "critical"
+		Critical string
+	}
+}
+
+// UpdateSeverityResponseFields holds metadata about fields for UpdateSeverityResponse.
+var UpdateSeverityResponseFields struct {
+
+	// Incident == "incident"
+	Incident string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateStatusRequestFields holds metadata about fields for UpdateStatusRequest.
+var UpdateStatusRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Status == "status"
+	Status string
+
+	// StatusOptions contains the acceptable values for the
+	// UpdateStatusRequest.Status field.
+	StatusOptions struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+}
+
+// UpdateStatusResponseFields holds metadata about fields for UpdateStatusResponse.
+var UpdateStatusResponseFields struct {
+
+	// Incident == "incident"
+	Incident string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateTaskStatusRequestFields holds metadata about fields for UpdateTaskStatusRequest.
+var UpdateTaskStatusRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+
+	// Status == "status"
+	Status string
+
+	// StatusOptions contains the acceptable values for the
+	// UpdateTaskStatusRequest.Status field.
+	StatusOptions struct {
+
+		// Todo == "todo"
+		Todo string
+
+		// Progress == "progress"
+		Progress string
+
+		// Done == "done"
+		Done string
+	}
+}
+
+// UpdateTaskStatusResponseFields holds metadata about fields for UpdateTaskStatusResponse.
+var UpdateTaskStatusResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Task == "task"
+	Task string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateTaskTextRequestFields holds metadata about fields for UpdateTaskTextRequest.
+var UpdateTaskTextRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+
+	// Text == "text"
+	Text string
+}
+
+// UpdateTaskTextResponseFields holds metadata about fields for UpdateTaskTextResponse.
+var UpdateTaskTextResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Task == "task"
+	Task string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateTaskUserRequestFields holds metadata about fields for UpdateTaskUserRequest.
+var UpdateTaskUserRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// TaskID == "taskID"
+	TaskID string
+
+	// UserID == "userID"
+	UserID string
+}
+
+// UpdateTaskUserResponseFields holds metadata about fields for UpdateTaskUserResponse.
+var UpdateTaskUserResponseFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Task == "task"
+	Task string
+
+	// TaskList == "taskList"
+	TaskList string
+
+	// Error == "error"
+	Error string
+}
+
+// UpdateTitleRequestFields holds metadata about fields for UpdateTitleRequest.
+var UpdateTitleRequestFields struct {
+
+	// IncidentID == "incidentID"
+	IncidentID string
+
+	// Title == "title"
+	Title string
+}
+
+// UpdateTitleResponseFields holds metadata about fields for UpdateTitleResponse.
+var UpdateTitleResponseFields struct {
+
+	// Incident == "incident"
+	Incident string
+
+	// Error == "error"
+	Error string
+}
+
+// UserPreviewFields holds metadata about fields for UserPreview.
+var UserPreviewFields struct {
+
+	// UserID == "userID"
+	UserID string
+
+	// Name == "name"
+	Name string
+
+	// PhotoURL == "photoURL"
+	PhotoURL string
+}
+
+// WebhookIncidentFields holds metadata about fields for WebhookIncident.
+var WebhookIncidentFields struct {
+
+	// Version == "version"
+	Version string
+
+	// ID == "id"
+	ID string
+
+	// Source == "source"
+	Source string
+
+	// Time == "time"
+	Time string
+
+	// Event == "event"
+	Event string
+
+	// Incident == "incident"
+	Incident string
+}
 
 func init() {
-	
-	
-		
-			AddLabelRequestFields.IncidentID = `incidentID`
-			
-		
-			AddLabelRequestFields.Label = `label`
-			
-		
-	
 
-	
-		
-			AddLabelResponseFields.Incident = `incident`
-			
-		
-			AddLabelResponseFields.Error = `error`
-			
-		
-	
+	AddLabelRequestFields.IncidentID = `incidentID`
 
-	
-		
-			AddTaskRequestFields.IncidentID = `incidentID`
-			
-		
-			AddTaskRequestFields.Text = `text`
-			
-		
-			AddTaskRequestFields.AssignToUserId = `assignToUserID`
-			
-		
-	
+	AddLabelRequestFields.Label = `label`
 
-	
-		
-			AddTaskResponseFields.IncidentID = `incidentID`
-			
-		
-			AddTaskResponseFields.Task = `task`
-			
-		
-			AddTaskResponseFields.TaskList = `taskList`
-			
-		
-			AddTaskResponseFields.Error = `error`
-			
-		
-	
+	AddLabelResponseFields.Incident = `incident`
 
-	
-		
-			AssignRoleRequestFields.IncidentID = `incidentID`
-			
-		
-			AssignRoleRequestFields.UserID = `userID`
-			
-		
-			AssignRoleRequestFields.Role = `role`
-			
-				
-					AssignRoleRequestFields.RoleOptions.Commander = "commander"
-				
-					AssignRoleRequestFields.RoleOptions.Investigator = "investigator"
-				
-					AssignRoleRequestFields.RoleOptions.Observer = "observer"
-				
-			
-		
-	
+	AddLabelResponseFields.Error = `error`
 
-	
-		
-			AssignRoleResponseFields.Incident = `incident`
-			
-		
-			AssignRoleResponseFields.DidChange = `didChange`
-			
-		
-			AssignRoleResponseFields.Error = `error`
-			
-		
-	
+	AddTaskRequestFields.IncidentID = `incidentID`
 
-	
-		
-			CreateIncidentRequestFields.Title = `title`
-			
-		
-			CreateIncidentRequestFields.Severity = `severity`
-			
-				
-					CreateIncidentRequestFields.SeverityOptions.Pending = "pending"
-				
-					CreateIncidentRequestFields.SeverityOptions.Minor = "minor"
-				
-					CreateIncidentRequestFields.SeverityOptions.Major = "major"
-				
-					CreateIncidentRequestFields.SeverityOptions.Critical = "critical"
-				
-			
-		
-			CreateIncidentRequestFields.Labels = `labels`
-			
-		
-			CreateIncidentRequestFields.RoomPrefix = `roomPrefix`
-			
-		
-			CreateIncidentRequestFields.IsDrill = `isDrill`
-			
-		
-			CreateIncidentRequestFields.Status = `status`
-			
-				
-					CreateIncidentRequestFields.StatusOptions.Active = "active"
-				
-					CreateIncidentRequestFields.StatusOptions.Resolved = "resolved"
-				
-			
-		
-			CreateIncidentRequestFields.AttachCaption = `attachCaption`
-			
-		
-			CreateIncidentRequestFields.AttachURL = `attachURL`
-			
-		
-	
+	AddTaskRequestFields.Text = `text`
 
-	
-		
-			CreateIncidentResponseFields.Incident = `incident`
-			
-		
-			CreateIncidentResponseFields.Error = `error`
-			
-		
-	
+	AddTaskRequestFields.AssignToUserId = `assignToUserID`
 
-	
-		
-			CursorFields.NextValue = `nextValue`
-			
-		
-			CursorFields.HasMore = `hasMore`
-			
-		
-	
+	AddTaskResponseFields.IncidentID = `incidentID`
 
-	
-		
-			DeleteTaskRequestFields.IncidentID = `incidentID`
-			
-		
-			DeleteTaskRequestFields.TaskID = `taskID`
-			
-		
-	
+	AddTaskResponseFields.Task = `task`
 
-	
-		
-			DeleteTaskResponseFields.IncidentID = `incidentID`
-			
-		
-			DeleteTaskResponseFields.TaskList = `taskList`
-			
-		
-			DeleteTaskResponseFields.Error = `error`
-			
-		
-	
+	AddTaskResponseFields.TaskList = `taskList`
 
-	
-		
-	
+	AddTaskResponseFields.Error = `error`
 
-	
-		
-			GetHomescreenVersionResponseFields.Version = `version`
-			
-		
-	
+	AssignRoleRequestFields.IncidentID = `incidentID`
 
-	
-		
-			GetIncidentRequestFields.IncidentID = `incidentID`
-			
-		
-	
+	AssignRoleRequestFields.UserID = `userID`
 
-	
-		
-			GetIncidentResponseFields.Incident = `incident`
-			
-		
-			GetIncidentResponseFields.Error = `error`
-			
-		
-	
+	AssignRoleRequestFields.Role = `role`
 
-	
-		
-			GetIncidentVersionRequestFields.IncidentID = `incidentID`
-			
-		
-	
+	AssignRoleRequestFields.RoleOptions.Commander = "commander"
 
-	
-		
-			GetIncidentVersionResponseFields.Version = `version`
-			
-		
-	
+	AssignRoleRequestFields.RoleOptions.Investigator = "investigator"
 
-	
-		
-			IncidentFields.IncidentID = `incidentID`
-			
-		
-			IncidentFields.Severity = `severity`
-			
-				
-					IncidentFields.SeverityOptions.Pending = "pending"
-				
-					IncidentFields.SeverityOptions.Minor = "minor"
-				
-					IncidentFields.SeverityOptions.Major = "major"
-				
-					IncidentFields.SeverityOptions.Critical = "critical"
-				
-			
-		
-			IncidentFields.Labels = `labels`
-			
-		
-			IncidentFields.IsDrill = `isDrill`
-			
-		
-			IncidentFields.CreatedTime = `createdTime`
-			
-		
-			IncidentFields.ModifiedTime = `modifiedTime`
-			
-		
-			IncidentFields.CreatedByUser = `createdByUser`
-			
-		
-			IncidentFields.ClosedTime = `closedTime`
-			
-		
-			IncidentFields.DurationSeconds = `durationSeconds`
-			
-		
-			IncidentFields.Status = `status`
-			
-				
-					IncidentFields.StatusOptions.Active = "active"
-				
-					IncidentFields.StatusOptions.Resolved = "resolved"
-				
-			
-		
-			IncidentFields.Title = `title`
-			
-		
-			IncidentFields.OverviewURL = `overviewURL`
-			
-		
-			IncidentFields.Roles = `roles`
-			
-		
-			IncidentFields.TaskList = `taskList`
-			
-		
-			IncidentFields.Summary = `summary`
-			
-		
-			IncidentFields.HeroImagePath = `heroImagePath`
-			
-		
-			IncidentFields.IncidentStart = `incidentStart`
-			
-		
-			IncidentFields.IncidentEnd = `incidentEnd`
-			
-		
-	
+	AssignRoleRequestFields.RoleOptions.Observer = "observer"
 
-	
-		
-			IncidentLabelFields.Label = `label`
-			
-		
-			IncidentLabelFields.Description = `description`
-			
-		
-			IncidentLabelFields.ColorHex = `colorHex`
-			
-		
-	
+	AssignRoleResponseFields.Incident = `incident`
 
-	
-		
-			IncidentRoleFields.Role = `role`
-			
-				
-					IncidentRoleFields.RoleOptions.Commander = "commander"
-				
-					IncidentRoleFields.RoleOptions.Investigator = "investigator"
-				
-					IncidentRoleFields.RoleOptions.Observer = "observer"
-				
-			
-		
-			IncidentRoleFields.Description = `description`
-			
-		
-			IncidentRoleFields.MaxPeople = `maxPeople`
-			
-		
-			IncidentRoleFields.Mandatory = `mandatory`
-			
-		
-			IncidentRoleFields.Important = `important`
-			
-		
-			IncidentRoleFields.User = `user`
-			
-		
-	
+	AssignRoleResponseFields.DidChange = `didChange`
 
-	
-		
-			IncidentsQueryFields.Limit = `limit`
-			
-		
-			IncidentsQueryFields.IncludeStatuses = `includeStatuses`
-			
-				
-					IncidentsQueryFields.IncludeStatusesOptions.Active = "active"
-				
-					IncidentsQueryFields.IncludeStatusesOptions.Resolved = "resolved"
-				
-			
-		
-			IncidentsQueryFields.ExcludeStatuses = `excludeStatuses`
-			
-				
-					IncidentsQueryFields.ExcludeStatusesOptions.Active = "active"
-				
-					IncidentsQueryFields.ExcludeStatusesOptions.Resolved = "resolved"
-				
-			
-		
-			IncidentsQueryFields.IncidentLabels = `incidentLabels`
-			
-		
-			IncidentsQueryFields.DateFrom = `dateFrom`
-			
-		
-			IncidentsQueryFields.DateTo = `dateTo`
-			
-		
-			IncidentsQueryFields.OnlyDrills = `onlyDrills`
-			
-		
-			IncidentsQueryFields.OrderDirection = `orderDirection`
-			
-				
-					IncidentsQueryFields.OrderDirectionOptions.ASC = "ASC"
-				
-					IncidentsQueryFields.OrderDirectionOptions.DESC = "DESC"
-				
-			
-		
-			IncidentsQueryFields.Severity = `severity`
-			
-		
-			IncidentsQueryFields.QueryString = `queryString`
-			
-		
-	
+	AssignRoleResponseFields.Error = `error`
 
-	
-		
-			QueryIncidentsRequestFields.Query = `query`
-			
-		
-			QueryIncidentsRequestFields.Cursor = `cursor`
-			
-		
-	
+	CreateIncidentRequestFields.Title = `title`
 
-	
-		
-			QueryIncidentsResponseFields.Incidents = `incidents`
-			
-		
-			QueryIncidentsResponseFields.Query = `query`
-			
-		
-			QueryIncidentsResponseFields.Cursor = `cursor`
-			
-		
-			QueryIncidentsResponseFields.Error = `error`
-			
-		
-	
+	CreateIncidentRequestFields.Severity = `severity`
 
-	
-		
-			RemoveLabelRequestFields.IncidentID = `incidentID`
-			
-		
-			RemoveLabelRequestFields.Label = `label`
-			
-		
-	
+	CreateIncidentRequestFields.SeverityOptions.Pending = "pending"
 
-	
-		
-			RemoveLabelResponseFields.Incident = `incident`
-			
-		
-			RemoveLabelResponseFields.Error = `error`
-			
-		
-	
+	CreateIncidentRequestFields.SeverityOptions.Minor = "minor"
 
-	
-		
-			TaskFields.TaskID = `taskID`
-			
-		
-			TaskFields.Immutable = `immutable`
-			
-		
-			TaskFields.CreatedTime = `createdTime`
-			
-		
-			TaskFields.ModifiedTime = `modifiedTime`
-			
-		
-			TaskFields.Text = `text`
-			
-		
-			TaskFields.Status = `status`
-			
-				
-					TaskFields.StatusOptions.Todo = "todo"
-				
-					TaskFields.StatusOptions.Progress = "progress"
-				
-					TaskFields.StatusOptions.Done = "done"
-				
-			
-		
-			TaskFields.AuthorUser = `authorUser`
-			
-		
-			TaskFields.AssignedUser = `assignedUser`
-			
-		
-	
+	CreateIncidentRequestFields.SeverityOptions.Major = "major"
 
-	
-		
-			TaskListFields.Tasks = `tasks`
-			
-		
-			TaskListFields.TodoCount = `todoCount`
-			
-		
-			TaskListFields.DoneCount = `doneCount`
-			
-		
-	
+	CreateIncidentRequestFields.SeverityOptions.Critical = "critical"
 
-	
-		
-			UnassignRoleRequestFields.IncidentID = `incidentID`
-			
-		
-			UnassignRoleRequestFields.UserID = `userID`
-			
-		
-			UnassignRoleRequestFields.Role = `role`
-			
-				
-					UnassignRoleRequestFields.RoleOptions.Commander = "commander"
-				
-					UnassignRoleRequestFields.RoleOptions.Investigator = "investigator"
-				
-					UnassignRoleRequestFields.RoleOptions.Observer = "observer"
-				
-			
-		
-	
+	CreateIncidentRequestFields.Labels = `labels`
 
-	
-		
-			UnassignRoleResponseFields.Incident = `incident`
-			
-		
-			UnassignRoleResponseFields.DidChange = `didChange`
-			
-		
-			UnassignRoleResponseFields.Error = `error`
-			
-		
-	
+	CreateIncidentRequestFields.RoomPrefix = `roomPrefix`
 
-	
-		
-			UpdateIncidentEventTimeRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateIncidentEventTimeRequestFields.EventTime = `eventTime`
-			
-		
-			UpdateIncidentEventTimeRequestFields.ActivityItemKind = `activityItemKind`
-			
-				
-					UpdateIncidentEventTimeRequestFields.ActivityItemKindOptions.IncidentEnd = "incidentEnd"
-				
-					UpdateIncidentEventTimeRequestFields.ActivityItemKindOptions.IncidentStart = "incidentStart"
-				
-			
-		
-	
+	CreateIncidentRequestFields.IsDrill = `isDrill`
 
-	
-		
-			UpdateIncidentEventTimeResponseFields.Error = `error`
-			
-		
-	
+	CreateIncidentRequestFields.Status = `status`
 
-	
-		
-			UpdateIncidentIsDrillRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateIncidentIsDrillRequestFields.IsDrill = `isDrill`
-			
-		
-	
+	CreateIncidentRequestFields.StatusOptions.Active = "active"
 
-	
-		
-			UpdateIncidentIsDrillResponseFields.Incident = `incident`
-			
-		
-			UpdateIncidentIsDrillResponseFields.Error = `error`
-			
-		
-	
+	CreateIncidentRequestFields.StatusOptions.Resolved = "resolved"
 
-	
-		
-			UpdateSeverityRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateSeverityRequestFields.Severity = `severity`
-			
-				
-					UpdateSeverityRequestFields.SeverityOptions.Pending = "pending"
-				
-					UpdateSeverityRequestFields.SeverityOptions.Minor = "minor"
-				
-					UpdateSeverityRequestFields.SeverityOptions.Major = "major"
-				
-					UpdateSeverityRequestFields.SeverityOptions.Critical = "critical"
-				
-			
-		
-	
+	CreateIncidentRequestFields.AttachCaption = `attachCaption`
 
-	
-		
-			UpdateSeverityResponseFields.Incident = `incident`
-			
-		
-			UpdateSeverityResponseFields.Error = `error`
-			
-		
-	
+	CreateIncidentRequestFields.AttachURL = `attachURL`
 
-	
-		
-			UpdateStatusRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateStatusRequestFields.Status = `status`
-			
-				
-					UpdateStatusRequestFields.StatusOptions.Active = "active"
-				
-					UpdateStatusRequestFields.StatusOptions.Resolved = "resolved"
-				
-			
-		
-	
+	CreateIncidentResponseFields.Incident = `incident`
 
-	
-		
-			UpdateStatusResponseFields.Incident = `incident`
-			
-		
-			UpdateStatusResponseFields.Error = `error`
-			
-		
-	
+	CreateIncidentResponseFields.Error = `error`
 
-	
-		
-			UpdateTaskStatusRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateTaskStatusRequestFields.TaskID = `taskID`
-			
-		
-			UpdateTaskStatusRequestFields.Status = `status`
-			
-				
-					UpdateTaskStatusRequestFields.StatusOptions.Todo = "todo"
-				
-					UpdateTaskStatusRequestFields.StatusOptions.Progress = "progress"
-				
-					UpdateTaskStatusRequestFields.StatusOptions.Done = "done"
-				
-			
-		
-	
+	CursorFields.NextValue = `nextValue`
 
-	
-		
-			UpdateTaskStatusResponseFields.IncidentID = `incidentID`
-			
-		
-			UpdateTaskStatusResponseFields.Task = `task`
-			
-		
-			UpdateTaskStatusResponseFields.TaskList = `taskList`
-			
-		
-			UpdateTaskStatusResponseFields.Error = `error`
-			
-		
-	
+	CursorFields.HasMore = `hasMore`
 
-	
-		
-			UpdateTaskTextRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateTaskTextRequestFields.TaskID = `taskID`
-			
-		
-			UpdateTaskTextRequestFields.Text = `text`
-			
-		
-	
+	DeleteTaskRequestFields.IncidentID = `incidentID`
 
-	
-		
-			UpdateTaskTextResponseFields.IncidentID = `incidentID`
-			
-		
-			UpdateTaskTextResponseFields.Task = `task`
-			
-		
-			UpdateTaskTextResponseFields.TaskList = `taskList`
-			
-		
-			UpdateTaskTextResponseFields.Error = `error`
-			
-		
-	
+	DeleteTaskRequestFields.TaskID = `taskID`
 
-	
-		
-			UpdateTaskUserRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateTaskUserRequestFields.TaskID = `taskID`
-			
-		
-			UpdateTaskUserRequestFields.UserID = `userID`
-			
-		
-	
+	DeleteTaskResponseFields.IncidentID = `incidentID`
 
-	
-		
-			UpdateTaskUserResponseFields.IncidentID = `incidentID`
-			
-		
-			UpdateTaskUserResponseFields.Task = `task`
-			
-		
-			UpdateTaskUserResponseFields.TaskList = `taskList`
-			
-		
-			UpdateTaskUserResponseFields.Error = `error`
-			
-		
-	
+	DeleteTaskResponseFields.TaskList = `taskList`
 
-	
-		
-			UpdateTitleRequestFields.IncidentID = `incidentID`
-			
-		
-			UpdateTitleRequestFields.Title = `title`
-			
-		
-	
+	DeleteTaskResponseFields.Error = `error`
 
-	
-		
-			UpdateTitleResponseFields.Incident = `incident`
-			
-		
-			UpdateTitleResponseFields.Error = `error`
-			
-		
-	
+	GetHomescreenVersionResponseFields.Version = `version`
 
-	
-		
-			UserPreviewFields.UserID = `userID`
-			
-		
-			UserPreviewFields.Name = `name`
-			
-		
-			UserPreviewFields.PhotoURL = `photoURL`
-			
-		
-	
+	GetIncidentRequestFields.IncidentID = `incidentID`
 
-	
-		
-			WebhookIncidentFields.Version = `version`
-			
-		
-			WebhookIncidentFields.ID = `id`
-			
-		
-			WebhookIncidentFields.Source = `source`
-			
-		
-			WebhookIncidentFields.Time = `time`
-			
-		
-			WebhookIncidentFields.Event = `event`
-			
-		
-			WebhookIncidentFields.Incident = `incident`
-			
-		
-	
+	GetIncidentResponseFields.Incident = `incident`
+
+	GetIncidentResponseFields.Error = `error`
+
+	GetIncidentVersionRequestFields.IncidentID = `incidentID`
+
+	GetIncidentVersionResponseFields.Version = `version`
+
+	IncidentFields.IncidentID = `incidentID`
+
+	IncidentFields.Severity = `severity`
+
+	IncidentFields.SeverityOptions.Pending = "pending"
+
+	IncidentFields.SeverityOptions.Minor = "minor"
+
+	IncidentFields.SeverityOptions.Major = "major"
+
+	IncidentFields.SeverityOptions.Critical = "critical"
+
+	IncidentFields.Labels = `labels`
+
+	IncidentFields.IsDrill = `isDrill`
+
+	IncidentFields.CreatedTime = `createdTime`
+
+	IncidentFields.ModifiedTime = `modifiedTime`
+
+	IncidentFields.CreatedByUser = `createdByUser`
+
+	IncidentFields.ClosedTime = `closedTime`
+
+	IncidentFields.DurationSeconds = `durationSeconds`
+
+	IncidentFields.Status = `status`
+
+	IncidentFields.StatusOptions.Active = "active"
+
+	IncidentFields.StatusOptions.Resolved = "resolved"
+
+	IncidentFields.Title = `title`
+
+	IncidentFields.OverviewURL = `overviewURL`
+
+	IncidentFields.Roles = `roles`
+
+	IncidentFields.TaskList = `taskList`
+
+	IncidentFields.Summary = `summary`
+
+	IncidentFields.HeroImagePath = `heroImagePath`
+
+	IncidentFields.IncidentStart = `incidentStart`
+
+	IncidentFields.IncidentEnd = `incidentEnd`
+
+	IncidentLabelFields.Label = `label`
+
+	IncidentLabelFields.Description = `description`
+
+	IncidentLabelFields.ColorHex = `colorHex`
+
+	IncidentRoleFields.Role = `role`
+
+	IncidentRoleFields.RoleOptions.Commander = "commander"
+
+	IncidentRoleFields.RoleOptions.Investigator = "investigator"
+
+	IncidentRoleFields.RoleOptions.Observer = "observer"
+
+	IncidentRoleFields.Description = `description`
+
+	IncidentRoleFields.MaxPeople = `maxPeople`
+
+	IncidentRoleFields.Mandatory = `mandatory`
+
+	IncidentRoleFields.Important = `important`
+
+	IncidentRoleFields.User = `user`
+
+	IncidentsQueryFields.Limit = `limit`
+
+	IncidentsQueryFields.IncludeStatuses = `includeStatuses`
+
+	IncidentsQueryFields.IncludeStatusesOptions.Active = "active"
+
+	IncidentsQueryFields.IncludeStatusesOptions.Resolved = "resolved"
+
+	IncidentsQueryFields.ExcludeStatuses = `excludeStatuses`
+
+	IncidentsQueryFields.ExcludeStatusesOptions.Active = "active"
+
+	IncidentsQueryFields.ExcludeStatusesOptions.Resolved = "resolved"
+
+	IncidentsQueryFields.IncidentLabels = `incidentLabels`
+
+	IncidentsQueryFields.DateFrom = `dateFrom`
+
+	IncidentsQueryFields.DateTo = `dateTo`
+
+	IncidentsQueryFields.OnlyDrills = `onlyDrills`
+
+	IncidentsQueryFields.OrderDirection = `orderDirection`
+
+	IncidentsQueryFields.OrderDirectionOptions.ASC = "ASC"
+
+	IncidentsQueryFields.OrderDirectionOptions.DESC = "DESC"
+
+	IncidentsQueryFields.Severity = `severity`
+
+	IncidentsQueryFields.QueryString = `queryString`
+
+	QueryIncidentsRequestFields.Query = `query`
+
+	QueryIncidentsRequestFields.Cursor = `cursor`
+
+	QueryIncidentsResponseFields.Incidents = `incidents`
+
+	QueryIncidentsResponseFields.Query = `query`
+
+	QueryIncidentsResponseFields.Cursor = `cursor`
+
+	QueryIncidentsResponseFields.Error = `error`
+
+	RemoveLabelRequestFields.IncidentID = `incidentID`
+
+	RemoveLabelRequestFields.Label = `label`
+
+	RemoveLabelResponseFields.Incident = `incident`
+
+	RemoveLabelResponseFields.Error = `error`
+
+	TaskFields.TaskID = `taskID`
+
+	TaskFields.Immutable = `immutable`
+
+	TaskFields.CreatedTime = `createdTime`
+
+	TaskFields.ModifiedTime = `modifiedTime`
+
+	TaskFields.Text = `text`
+
+	TaskFields.Status = `status`
+
+	TaskFields.StatusOptions.Todo = "todo"
+
+	TaskFields.StatusOptions.Progress = "progress"
+
+	TaskFields.StatusOptions.Done = "done"
+
+	TaskFields.AuthorUser = `authorUser`
+
+	TaskFields.AssignedUser = `assignedUser`
+
+	TaskListFields.Tasks = `tasks`
+
+	TaskListFields.TodoCount = `todoCount`
+
+	TaskListFields.DoneCount = `doneCount`
+
+	UnassignRoleRequestFields.IncidentID = `incidentID`
+
+	UnassignRoleRequestFields.UserID = `userID`
+
+	UnassignRoleRequestFields.Role = `role`
+
+	UnassignRoleRequestFields.RoleOptions.Commander = "commander"
+
+	UnassignRoleRequestFields.RoleOptions.Investigator = "investigator"
+
+	UnassignRoleRequestFields.RoleOptions.Observer = "observer"
+
+	UnassignRoleResponseFields.Incident = `incident`
+
+	UnassignRoleResponseFields.DidChange = `didChange`
+
+	UnassignRoleResponseFields.Error = `error`
+
+	UpdateIncidentEventTimeRequestFields.IncidentID = `incidentID`
+
+	UpdateIncidentEventTimeRequestFields.EventTime = `eventTime`
+
+	UpdateIncidentEventTimeRequestFields.ActivityItemKind = `activityItemKind`
+
+	UpdateIncidentEventTimeRequestFields.ActivityItemKindOptions.IncidentEnd = "incidentEnd"
+
+	UpdateIncidentEventTimeRequestFields.ActivityItemKindOptions.IncidentStart = "incidentStart"
+
+	UpdateIncidentEventTimeResponseFields.Error = `error`
+
+	UpdateIncidentIsDrillRequestFields.IncidentID = `incidentID`
+
+	UpdateIncidentIsDrillRequestFields.IsDrill = `isDrill`
+
+	UpdateIncidentIsDrillResponseFields.Incident = `incident`
+
+	UpdateIncidentIsDrillResponseFields.Error = `error`
+
+	UpdateSeverityRequestFields.IncidentID = `incidentID`
+
+	UpdateSeverityRequestFields.Severity = `severity`
+
+	UpdateSeverityRequestFields.SeverityOptions.Pending = "pending"
+
+	UpdateSeverityRequestFields.SeverityOptions.Minor = "minor"
+
+	UpdateSeverityRequestFields.SeverityOptions.Major = "major"
+
+	UpdateSeverityRequestFields.SeverityOptions.Critical = "critical"
+
+	UpdateSeverityResponseFields.Incident = `incident`
+
+	UpdateSeverityResponseFields.Error = `error`
+
+	UpdateStatusRequestFields.IncidentID = `incidentID`
+
+	UpdateStatusRequestFields.Status = `status`
+
+	UpdateStatusRequestFields.StatusOptions.Active = "active"
+
+	UpdateStatusRequestFields.StatusOptions.Resolved = "resolved"
+
+	UpdateStatusResponseFields.Incident = `incident`
+
+	UpdateStatusResponseFields.Error = `error`
+
+	UpdateTaskStatusRequestFields.IncidentID = `incidentID`
+
+	UpdateTaskStatusRequestFields.TaskID = `taskID`
+
+	UpdateTaskStatusRequestFields.Status = `status`
+
+	UpdateTaskStatusRequestFields.StatusOptions.Todo = "todo"
+
+	UpdateTaskStatusRequestFields.StatusOptions.Progress = "progress"
+
+	UpdateTaskStatusRequestFields.StatusOptions.Done = "done"
+
+	UpdateTaskStatusResponseFields.IncidentID = `incidentID`
+
+	UpdateTaskStatusResponseFields.Task = `task`
+
+	UpdateTaskStatusResponseFields.TaskList = `taskList`
+
+	UpdateTaskStatusResponseFields.Error = `error`
+
+	UpdateTaskTextRequestFields.IncidentID = `incidentID`
+
+	UpdateTaskTextRequestFields.TaskID = `taskID`
+
+	UpdateTaskTextRequestFields.Text = `text`
+
+	UpdateTaskTextResponseFields.IncidentID = `incidentID`
+
+	UpdateTaskTextResponseFields.Task = `task`
+
+	UpdateTaskTextResponseFields.TaskList = `taskList`
+
+	UpdateTaskTextResponseFields.Error = `error`
+
+	UpdateTaskUserRequestFields.IncidentID = `incidentID`
+
+	UpdateTaskUserRequestFields.TaskID = `taskID`
+
+	UpdateTaskUserRequestFields.UserID = `userID`
+
+	UpdateTaskUserResponseFields.IncidentID = `incidentID`
+
+	UpdateTaskUserResponseFields.Task = `task`
+
+	UpdateTaskUserResponseFields.TaskList = `taskList`
+
+	UpdateTaskUserResponseFields.Error = `error`
+
+	UpdateTitleRequestFields.IncidentID = `incidentID`
+
+	UpdateTitleRequestFields.Title = `title`
+
+	UpdateTitleResponseFields.Incident = `incident`
+
+	UpdateTitleResponseFields.Error = `error`
+
+	UserPreviewFields.UserID = `userID`
+
+	UserPreviewFields.Name = `name`
+
+	UserPreviewFields.PhotoURL = `photoURL`
+
+	WebhookIncidentFields.Version = `version`
+
+	WebhookIncidentFields.ID = `id`
+
+	WebhookIncidentFields.Source = `source`
+
+	WebhookIncidentFields.Time = `time`
+
+	WebhookIncidentFields.Event = `event`
+
+	WebhookIncidentFields.Incident = `incident`
 
 }
 
