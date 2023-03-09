@@ -13,7 +13,7 @@ Import the package:
 go get github.com/grafana/incident-api/go/incident
 ```
 
-## Use the API to create an Incident
+## Make calls to the API
 
 ```go
 // create a client, and the services you need
@@ -46,6 +46,8 @@ import (
 
 // handleIncidentWebhook gets a handler that processes webhooks from
 // Grafana Incident.
+// The secret should be safely injected (avoid committing it to source control).
+// Secrets can be created in the web interface when configuring the Outgoing Webhook integration.
 func handleIncidentWebhook(secret string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// incident.ParseWebhook will verify the signature and decode
