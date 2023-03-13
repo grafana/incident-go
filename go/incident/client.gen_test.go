@@ -15,7 +15,8 @@ func Test(t *testing.T) {
 	client := incident.NewTestClient()
 	incidentsService := incident.NewIncidentsService(client)
 	createIncidentResp, err := incidentsService.CreateIncident(ctx, incident.CreateIncidentRequest{
-		Title: "short description explaining what's going wrong",
+		Title:    "short description explaining what's going wrong",
+		Severity: incident.Options.IncidentSeverity.Minor,
 	})
 	is.NoErr(err)
 	is.Equal(createIncidentResp.Incident.IncidentID, "incident-123")

@@ -26,6 +26,7 @@ incidentsService := incident.NewIncidentsService(client)
 // declare an incident
 createIncidentResp, err := incidentsService.CreateIncident(ctx, incident.CreateIncidentRequest{
 	Title: "short description explaining what's going wrong",
+	Severity: incident.Options.IncidentSeverity.Minor,
 })
 if err != nil {
 	// if something goes wrong, the error will help you
