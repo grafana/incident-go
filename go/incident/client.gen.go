@@ -3442,3 +3442,293 @@ func (s *TasksService) stubUpdateTaskUser() (*UpdateTaskUserResponse, error) {
 	}
 	return &dest, nil
 }
+
+// Options contains constants to use for various fields across the API.
+// It follows Options.{ObjectName}{FieldName}.{Option} structure, for example
+// Options.IncidentSeverity.Pending.
+var Options struct {
+
+	// AssignRoleRequestRole contains the acceptable values for the
+	// AssignRoleRequest.Role field.
+	AssignRoleRequestRole struct {
+
+		// Commander == "commander"
+		Commander string
+
+		// Investigator == "investigator"
+		Investigator string
+
+		// Observer == "observer"
+		Observer string
+	}
+
+	// CreateIncidentRequestSeverity contains the acceptable values for the
+	// CreateIncidentRequest.Severity field.
+	CreateIncidentRequestSeverity struct {
+
+		// Pending == "pending"
+		Pending string
+
+		// Minor == "minor"
+		Minor string
+
+		// Major == "major"
+		Major string
+
+		// Critical == "critical"
+		Critical string
+	}
+
+	// CreateIncidentRequestStatus contains the acceptable values for the
+	// CreateIncidentRequest.Status field.
+	CreateIncidentRequestStatus struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// IncidentSeverity contains the acceptable values for the
+	// Incident.Severity field.
+	IncidentSeverity struct {
+
+		// Pending == "pending"
+		Pending string
+
+		// Minor == "minor"
+		Minor string
+
+		// Major == "major"
+		Major string
+
+		// Critical == "critical"
+		Critical string
+	}
+
+	// IncidentStatus contains the acceptable values for the
+	// Incident.Status field.
+	IncidentStatus struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// IncidentRoleRole contains the acceptable values for the
+	// IncidentRole.Role field.
+	IncidentRoleRole struct {
+
+		// Commander == "commander"
+		Commander string
+
+		// Investigator == "investigator"
+		Investigator string
+
+		// Observer == "observer"
+		Observer string
+	}
+
+	// IncidentsQueryIncludeStatuses contains the acceptable values for the
+	// IncidentsQuery.IncludeStatuses field.
+	IncidentsQueryIncludeStatuses struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// IncidentsQueryExcludeStatuses contains the acceptable values for the
+	// IncidentsQuery.ExcludeStatuses field.
+	IncidentsQueryExcludeStatuses struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// IncidentsQueryOrderDirection contains the acceptable values for the
+	// IncidentsQuery.OrderDirection field.
+	IncidentsQueryOrderDirection struct {
+
+		// ASC == "ASC"
+		ASC string
+
+		// DESC == "DESC"
+		DESC string
+	}
+
+	// TaskStatus contains the acceptable values for the
+	// Task.Status field.
+	TaskStatus struct {
+
+		// Todo == "todo"
+		Todo string
+
+		// Progress == "progress"
+		Progress string
+
+		// Done == "done"
+		Done string
+	}
+
+	// UnassignRoleRequestRole contains the acceptable values for the
+	// UnassignRoleRequest.Role field.
+	UnassignRoleRequestRole struct {
+
+		// Commander == "commander"
+		Commander string
+
+		// Investigator == "investigator"
+		Investigator string
+
+		// Observer == "observer"
+		Observer string
+	}
+
+	// UpdateIncidentEventTimeRequestActivityItemKind contains the acceptable values for the
+	// UpdateIncidentEventTimeRequest.ActivityItemKind field.
+	UpdateIncidentEventTimeRequestActivityItemKind struct {
+
+		// IncidentEnd == "incidentEnd"
+		IncidentEnd string
+
+		// IncidentStart == "incidentStart"
+		IncidentStart string
+	}
+
+	// UpdateSeverityRequestSeverity contains the acceptable values for the
+	// UpdateSeverityRequest.Severity field.
+	UpdateSeverityRequestSeverity struct {
+
+		// Pending == "pending"
+		Pending string
+
+		// Minor == "minor"
+		Minor string
+
+		// Major == "major"
+		Major string
+
+		// Critical == "critical"
+		Critical string
+	}
+
+	// UpdateStatusRequestStatus contains the acceptable values for the
+	// UpdateStatusRequest.Status field.
+	UpdateStatusRequestStatus struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// UpdateTaskStatusRequestStatus contains the acceptable values for the
+	// UpdateTaskStatusRequest.Status field.
+	UpdateTaskStatusRequestStatus struct {
+
+		// Todo == "todo"
+		Todo string
+
+		// Progress == "progress"
+		Progress string
+
+		// Done == "done"
+		Done string
+	}
+}
+
+func init() {
+
+	Options.AssignRoleRequestRole.Commander = "commander"
+
+	Options.AssignRoleRequestRole.Investigator = "investigator"
+
+	Options.AssignRoleRequestRole.Observer = "observer"
+
+	Options.CreateIncidentRequestSeverity.Pending = "pending"
+
+	Options.CreateIncidentRequestSeverity.Minor = "minor"
+
+	Options.CreateIncidentRequestSeverity.Major = "major"
+
+	Options.CreateIncidentRequestSeverity.Critical = "critical"
+
+	Options.CreateIncidentRequestStatus.Active = "active"
+
+	Options.CreateIncidentRequestStatus.Resolved = "resolved"
+
+	Options.IncidentSeverity.Pending = "pending"
+
+	Options.IncidentSeverity.Minor = "minor"
+
+	Options.IncidentSeverity.Major = "major"
+
+	Options.IncidentSeverity.Critical = "critical"
+
+	Options.IncidentStatus.Active = "active"
+
+	Options.IncidentStatus.Resolved = "resolved"
+
+	Options.IncidentRoleRole.Commander = "commander"
+
+	Options.IncidentRoleRole.Investigator = "investigator"
+
+	Options.IncidentRoleRole.Observer = "observer"
+
+	Options.IncidentsQueryIncludeStatuses.Active = "active"
+
+	Options.IncidentsQueryIncludeStatuses.Resolved = "resolved"
+
+	Options.IncidentsQueryExcludeStatuses.Active = "active"
+
+	Options.IncidentsQueryExcludeStatuses.Resolved = "resolved"
+
+	Options.IncidentsQueryOrderDirection.ASC = "ASC"
+
+	Options.IncidentsQueryOrderDirection.DESC = "DESC"
+
+	Options.TaskStatus.Todo = "todo"
+
+	Options.TaskStatus.Progress = "progress"
+
+	Options.TaskStatus.Done = "done"
+
+	Options.UnassignRoleRequestRole.Commander = "commander"
+
+	Options.UnassignRoleRequestRole.Investigator = "investigator"
+
+	Options.UnassignRoleRequestRole.Observer = "observer"
+
+	Options.UpdateIncidentEventTimeRequestActivityItemKind.IncidentEnd = "incidentEnd"
+
+	Options.UpdateIncidentEventTimeRequestActivityItemKind.IncidentStart = "incidentStart"
+
+	Options.UpdateSeverityRequestSeverity.Pending = "pending"
+
+	Options.UpdateSeverityRequestSeverity.Minor = "minor"
+
+	Options.UpdateSeverityRequestSeverity.Major = "major"
+
+	Options.UpdateSeverityRequestSeverity.Critical = "critical"
+
+	Options.UpdateStatusRequestStatus.Active = "active"
+
+	Options.UpdateStatusRequestStatus.Resolved = "resolved"
+
+	Options.UpdateTaskStatusRequestStatus.Todo = "todo"
+
+	Options.UpdateTaskStatusRequestStatus.Progress = "progress"
+
+	Options.UpdateTaskStatusRequestStatus.Done = "done"
+
+}
