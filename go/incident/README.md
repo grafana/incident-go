@@ -15,6 +15,8 @@ go get github.com/grafana/incident-api/go/incident
 
 ## Make calls to the API
 
+In this example, we will use the [IncidentsService.CreateIncident() method](https://grafana.com/docs/grafana-cloud/incident/api/experimental/reference/go/#createincident) to declare an Incident, and print its ID.
+
 ```go
 // create a client, and the services you need
 serviceAccountToken := os.Getenv("SERVICE_ACCOUNT_TOKEN")
@@ -22,7 +24,7 @@ client := incident.NewClient("https://your-api-endpoint/api", serviceAccountToke
 incidentsService := incident.NewIncidentsService(client)
 
 // declare an incident
-createIncidentResp, err := incidentsService.[CreateIncident](https://grafana.com/docs/grafana-cloud/incident/api/experimental/reference/go/#createincident)(ctx, incident.CreateIncidentRequest{
+createIncidentResp, err := incidentsService.CreateIncident(ctx, incident.CreateIncidentRequest{
 	Title: "short description explaining what's going wrong",
 })
 if err != nil {
