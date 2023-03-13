@@ -22,7 +22,7 @@ client := incident.NewClient("https://your-api-endpoint/api", serviceAccountToke
 incidentsService := incident.NewIncidentsService(client)
 
 // declare an incident
-createIncidentResp, err := incidentsService.CreateIncident(ctx, incident.CreateIncidentRequest{
+createIncidentResp, err := incidentsService.[CreateIncident](https://grafana.com/docs/grafana-cloud/incident/api/experimental/reference/go/#createincident)(ctx, incident.CreateIncidentRequest{
 	Title: "short description explaining what's going wrong",
 })
 if err != nil {
