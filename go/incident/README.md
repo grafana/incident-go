@@ -2,8 +2,8 @@
 
 The Grafana Incident Go Client library allows you to access the Grafana Incident API from your Go code.
 
-- Get started with the [Grafana Incident API documentation (preview)](https://grafana.com/docs/grafana-cloud/incident/api/experimental/)
-- Or dive deep into the [reference docs (preview)](https://grafana.com/docs/grafana-cloud/incident/api/experimental/reference/)
+- Get started with the [Grafana Incident API documentation (experimental)](https://grafana.com/docs/grafana-cloud/incident/api/experimental/)
+- Or dive deep into the [reference docs (experimental)](https://grafana.com/docs/grafana-cloud/incident/api/experimental/reference/go/)
 
 ## Get started
 
