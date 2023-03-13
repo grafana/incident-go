@@ -11,7 +11,7 @@ Welcome to the,
 Pick a langauge to get started:
 
 - [Go (golang) client library](./go/incident)
-- More langauges coming soon - let us know what's missing in github.com/grafana/incident-community
+- More langauges coming soon - let us know what's missing in the [grafana/incident-community](https://github.com/grafana/incident-community) GitHub repo
 
 ### Learn more
 
