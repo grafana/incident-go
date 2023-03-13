@@ -12,8 +12,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-
-	"github.com/inhies/go-bytesize"
 )
 
 // ParseWebhook parses an Outgoing Webhook from Grafana Incident.
@@ -24,7 +22,7 @@ func ParseWebhook(r *http.Request, secret string) (*OutgoingWebhookPayload, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
-	payload, err := io.ReadAll(io.LimitReader(r.Body, int64(1*bytesize.MB)))
+	payload, err := io.ReadAll(io.LimitReader(r.Body, int64(1*mb)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
@@ -51,7 +49,7 @@ func VerifySignature(r *http.Request, secret string) error {
 	}
 	t := s["t"]
 	v1 := s["v1"]
-	payload, err := io.ReadAll(io.LimitReader(r.Body, int64(1*bytesize.MB)))
+	payload, err := io.ReadAll(io.LimitReader(r.Body, int64(1*mb)))
 	// Copy body for other handlers
 	r.Body = io.NopCloser(bytes.NewBuffer(payload))
 	if err != nil {
@@ -79,3 +77,9 @@ func GenerateSignature(data []byte, secret string) string {
 	m.Write(data)
 	return hex.EncodeToString(m.Sum(nil))
 }
+
+// Byte size size suffixes.
+const (
+	// mb represents megabytes.
+	mb = 1 << (10 * 2)
+)
