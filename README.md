@@ -8,6 +8,13 @@ Welcome to the,
 
 ## Get started
 
+Pick a langauge to get started:
+
+- [Go (golang) client library](./go/incident)
+- More langauges coming soon - let us know what's missing in github.com/grafana/incident-community
+
+### Learn more
+
 To learn about the various ways to progammatically interact with Grafana Incident, be sure to get started with the [Grafana Incident API Documentation](https://grafana.com/docs/grafana-cloud/incident/api/).
 
 ### What can we do better?
