@@ -41,7 +41,7 @@ type Client struct {
 // The remoteHost should be "https://your-stack.grafana.net/api/plugins/grafana-incident-app/resources/api/experimental"
 // with `your-stack.grafana.net` pointing to your instance.
 // The serviceAccountToken can be obtained from the Configuration via the web app
-// (For more information, see https://grafana.com/docs/grafana-cloud/incident/api/experimental/auth/).
+// (For more information, see https://grafana.com/docs/grafana-cloud/incident/api/rpc/auth/).
 func NewClient(remoteHost, serviceAccountToken string) *Client {
 	c := &Client{
 		RemoteHost: remoteHost,
