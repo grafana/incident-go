@@ -67,6 +67,94 @@ func NewTestClient() *Client {
 	return c
 }
 
+// ActivityItem describes an event that occurred related to an Incident.
+type ActivityItem struct {
+
+	// The unique identifier of the ActivityItem.
+	ActivityItemID string `json:"activityItemID"`
+
+	// IncidentID is the unique identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// User is the person who caused the ActivityItem.
+	User UserPreview `json:"user"`
+
+	// SubjectUser is the person who was affected by the ActivityItem (not the person
+	// who caused it).
+	SubjectUser UserPreview `json:"subjectUser"`
+
+	// CreatedTime is the time when the ActivityItem was created. The string value
+	// format should follow RFC 3339.
+	CreatedTime string `json:"createdTime"`
+
+	// EventTime is the time when the event occurred. It is configurable by the user.
+	// The string value format should follow RFC 3339.
+	EventTime string `json:"eventTime"`
+
+	// ActivityKind is the type of activity this item represents.
+	ActivityKind string `json:"activityKind"`
+
+	// Body is a human readable description of the ActivityItem.
+	Body string `json:"body"`
+
+	// URL is an url related with this activity
+	URL string `json:"url"`
+
+	// Tags contains a list of tags associated with this activity.
+	Tags []string `json:"tags"`
+
+	// Immutable indicates if the activity is immutable.
+	Immutable bool `json:"immutable"`
+
+	// FieldValues is an object of field values associated with the ActivityItem.
+	// The structure is determined by the ActivityKind.
+	FieldValues map[string]interface{} `json:"fieldValues"`
+}
+
+// ActivityQuery is the response from the QueryActivity method.
+type ActivityQuery struct {
+
+	// IncidentID is the unique identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Limit is the number of Incidents to return.
+	Limit int `json:"limit"`
+
+	// Tag is the tag to filter by.
+	Tag string `json:"tag"`
+
+	// OrderDirection is the direction to order the results.
+	OrderDirection string `json:"orderDirection"`
+
+	// ActivityKind filters by a list of allowed ActivityKind's.
+	ActivityKind []string `json:"activityKind"`
+}
+
+// AddActivityRequest is the request for the AddActivity operation.
+type AddActivityRequest struct {
+
+	// IncidentID is the unique identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// ActivityKind is the type of activity this item represents.
+	ActivityKind string `json:"activityKind"`
+
+	// Body is a human readable description of the ActivityItem. URLs mentioned will be
+	// parsed and attached as context.
+	Body string `json:"body"`
+
+	// EventTime is the time when the event occurred. If empty, the current time is
+	// used. The string value format should follow RFC 3339.
+	EventTime string `json:"eventTime"`
+}
+
+// AddActivityResponse is the response from the AddActivity method.
+type AddActivityResponse struct {
+
+	// ActivityItem is the newly created ActivityItem.
+	ActivityItem ActivityItem `json:"activityItem"`
+}
+
 // AddLabelRequest is the request for the AddLabel call.
 type AddLabelRequest struct {
 
@@ -261,16 +349,19 @@ type Incident struct {
 	// ways too. For example, during drills, more help might be offered to users.
 	IsDrill bool `json:"isDrill"`
 
-	// CreatedTime is when the Incident was created.
+	// CreatedTime is when the Incident was created. The string value format should
+	// follow RFC 3339.
 	CreatedTime string `json:"createdTime"`
 
-	// ModifiedTime is when the Incident was last modified.
+	// ModifiedTime is when the Incident was last modified. The string value format
+	// should follow RFC 3339.
 	ModifiedTime string `json:"modifiedTime"`
 
 	// CreatedByUser is the UserPreview that created the Incident.
 	CreatedByUser UserPreview `json:"createdByUser"`
 
-	// ClosedTime is when the Incident was closed.
+	// ClosedTime is when the Incident was closed. The string value format should
+	// follow RFC 3339.
 	ClosedTime string `json:"closedTime"`
 
 	// DurationSeconds is the number of seconds this Incident was (or is) open for.
@@ -297,10 +388,12 @@ type Incident struct {
 	// HeroImagePath is the path to the hero image for this Incident.
 	HeroImagePath string `json:"heroImagePath"`
 
-	// IncidentStart is when the Incident began.
+	// IncidentStart is when the Incident began. The string value format should follow
+	// RFC 3339.
 	IncidentStart string `json:"incidentStart"`
 
-	// IncidentEnd is when the Incident ended.
+	// IncidentEnd is when the Incident ended. The string value format should follow
+	// RFC 3339.
 	IncidentEnd string `json:"incidentEnd"`
 }
 
@@ -407,6 +500,31 @@ type OutgoingWebhookPayload struct {
 	Incident *Incident `json:"incident"`
 }
 
+// QueryActivityRequest is the request for the QueryActivity operation.
+type QueryActivityRequest struct {
+
+	// Query describes the query to make.
+	Query ActivityQuery `json:"query"`
+
+	// Cursor is used to page through results. Empty for the first page. For subsequent
+	// pages, use previously returned Cursor values.
+	Cursor Cursor `json:"cursor"`
+}
+
+// QueryActivityResponse is the response from the QueryActivity method.
+type QueryActivityResponse struct {
+
+	// ActivityItems is the list of items.
+	ActivityItems []ActivityItem `json:"activityItems"`
+
+	// Query is the query that was used to generate the response.
+	Query ActivityQuery `json:"query"`
+
+	// Cursor is used to page through results. Empty for the first page. For subsequent
+	// pages, use previously returned Cursor values.
+	Cursor Cursor `json:"cursor"`
+}
+
 // QueryIncidentsRequest is the request for the QueryIncidents call.
 type QueryIncidentsRequest struct {
 
@@ -429,6 +547,23 @@ type QueryIncidentsResponse struct {
 
 	// Cursor should be passed back to get the next page of results.
 	Cursor Cursor `json:"cursor"`
+}
+
+// RemoveActivityRequest is the request for the RemoveActivity operation.
+type RemoveActivityRequest struct {
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// ActivityItemID is the unique identifier of the ActivityItem.
+	ActivityItemID string `json:"activityItemID"`
+}
+
+// RemoveActivityResponse is the response from the RemoveActivity operation.
+type RemoveActivityResponse struct {
+
+	// ActivityItem is the updated ActivityItem.
+	ActivityItem ActivityItem `json:"activityItem"`
 }
 
 // RemoveLabelRequest is the request for the RemoveLabel call.
@@ -514,6 +649,50 @@ type UnassignRoleResponse struct {
 	DidChange bool `json:"didChange"`
 }
 
+// UpdateActivityBodyRequest is the request for the UpdateActivityBody operation.
+type UpdateActivityBodyRequest struct {
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// ActivityItemID is the unique identifier of the ActivityItem.
+	ActivityItemID string `json:"activityItemID"`
+
+	// Body is the new body to use for the given activity item
+	Body string `json:"body"`
+}
+
+// UpdateActivityBodyResponse is the response from the UpdateActivityBody
+// operation.
+type UpdateActivityBodyResponse struct {
+
+	// ActivityItem is the updated ActivityItem.
+	ActivityItem ActivityItem `json:"activityItem"`
+}
+
+// UpdateActivityEventTimeRequest is the request for the UpdateActivityEventTime
+// operation.
+type UpdateActivityEventTimeRequest struct {
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// ActivityItemID is the unique identifier of the ActivityItem.
+	ActivityItemID string `json:"activityItemID"`
+
+	// EventTime is the time when the event occurred. If empty, the created time of the
+	// activity item is used. The string value format should follow RFC 3339.
+	EventTime string `json:"eventTime"`
+}
+
+// UpdateActivityEventTimeResponse is the response from the UpdateActivityEventTime
+// operation.
+type UpdateActivityEventTimeResponse struct {
+
+	// ActivityItem is the updated ActivityItem.
+	ActivityItem ActivityItem `json:"activityItem"`
+}
+
 // UpdateIncidentEventTimeRequest is the request for the UpdateIncidentEventTime
 // call.
 type UpdateIncidentEventTimeRequest struct {
@@ -521,10 +700,11 @@ type UpdateIncidentEventTimeRequest struct {
 	// IncidentID is the identifier of the Incident.
 	IncidentID string `json:"incidentID"`
 
-	// EventTime is the new time for IncidentEnd or IncidentStart.
+	// EventTime is the new time for the start or end of the incident. The string value
+	// format should follow RFC 3339.
 	EventTime string `json:"eventTime"`
 
-	// ActivityItemKind is either the IncidentEnd or incidentStart time.
+	// ActivityItemKind is either the start or end of the incident.
 	ActivityItemKind string `json:"activityItemKind"`
 }
 
@@ -682,8 +862,323 @@ type UserPreview struct {
 	PhotoURL string `json:"photoURL"`
 }
 
+// ActivityService provides access to incident activity. You can post notes to the
+// timeline, and query and update the individual timeline items.
+// Get one by calling NewActivityService.
+type ActivityService struct {
+	client *Client
+}
+
+// NewActivityService gets a new ActivityService.
+func NewActivityService(client *Client) *ActivityService {
+	return &ActivityService{
+		client: client,
+	}
+}
+
+// AddActivity posts an activity item to an Incident.
+func (s *ActivityService) AddActivity(ctx context.Context, r AddActivityRequest) (*AddActivityResponse, error) {
+	if s.client.stubmode {
+		return s.stubAddActivity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.AddActivity: marshal AddActivityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "ActivityService.AddActivity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.AddActivity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.AddActivity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AddActivityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("ActivityService.AddActivity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.AddActivity: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("ActivityService.AddActivity: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.AddActivityResponse, nil
+}
+
+// QueryActivity gets a selection of activity items.
+func (s *ActivityService) QueryActivity(ctx context.Context, r QueryActivityRequest) (*QueryActivityResponse, error) {
+	if s.client.stubmode {
+		return s.stubQueryActivity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.QueryActivity: marshal QueryActivityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "ActivityService.QueryActivity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.QueryActivity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.QueryActivity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		QueryActivityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("ActivityService.QueryActivity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.QueryActivity: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("ActivityService.QueryActivity: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.QueryActivityResponse, nil
+}
+
+// RemoveActivity removes an activity item.
+func (s *ActivityService) RemoveActivity(ctx context.Context, r RemoveActivityRequest) (*RemoveActivityResponse, error) {
+	if s.client.stubmode {
+		return s.stubRemoveActivity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.RemoveActivity: marshal RemoveActivityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "ActivityService.RemoveActivity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.RemoveActivity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.RemoveActivity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		RemoveActivityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("ActivityService.RemoveActivity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.RemoveActivity: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("ActivityService.RemoveActivity: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.RemoveActivityResponse, nil
+}
+
+// UpdateActivityBody updates the body of a specific activity item.
+func (s *ActivityService) UpdateActivityBody(ctx context.Context, r UpdateActivityBodyRequest) (*UpdateActivityBodyResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateActivityBody()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: marshal UpdateActivityBodyRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "ActivityService.UpdateActivityBody"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateActivityBodyResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("ActivityService.UpdateActivityBody: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("ActivityService.UpdateActivityBody: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.UpdateActivityBodyResponse, nil
+}
+
+// UpdateActivityEventTime updates the event time of a specific activity item.
+func (s *ActivityService) UpdateActivityEventTime(ctx context.Context, r UpdateActivityEventTimeRequest) (*UpdateActivityEventTimeResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateActivityEventTime()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: marshal UpdateActivityEventTimeRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "ActivityService.UpdateActivityEventTime"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateActivityEventTimeResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, fmt.Errorf(response.Error)
+	}
+	return &response.UpdateActivityEventTimeResponse, nil
+}
+
 // IncidentsService provides the ability to query, get, declare (create), update,
-// and manage Incidents programatically. You can also manage roles and labels.
+// and manage Incidents programatically. You can also assign roles and update
+// labels.
 // Get one by calling NewIncidentsService.
 type IncidentsService struct {
 	client *Client
@@ -1730,6 +2225,238 @@ func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserReque
 	return &response.UpdateTaskUserResponse, nil
 }
 
+func (s *ActivityService) stubAddActivity() (*AddActivityResponse, error) {
+	exampleJSON := `{
+	"activityItem": {
+		"activityItemID": "activity-item-123",
+		"activityKind": "incidentCreated",
+		"body": "The incident was created by user-123",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"eventTime": "2021-08-07T11:58:23Z",
+		"fieldValues": {
+			"something-else": true,
+			"title": "new title"
+		},
+		"immutable": false,
+		"incidentID": "incident-123",
+		"subjectUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"tags": [
+			"important"
+		],
+		"url": "https://meet.google.com/my-incident-room",
+		"user": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		}
+	},
+	"error": "something went wrong"
+}`
+	var dest AddActivityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAddActivity: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
+	exampleJSON := `{
+	"activityItems": [
+		{
+			"activityItemID": "activity-item-123",
+			"activityKind": "incidentCreated",
+			"body": "The incident was created by user-123",
+			"createdTime": "2021-08-07T11:58:23Z",
+			"eventTime": "2021-08-07T11:58:23Z",
+			"fieldValues": {
+				"something-else": true,
+				"title": "new title"
+			},
+			"immutable": false,
+			"incidentID": "incident-123",
+			"subjectUser": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"tags": [
+				"important"
+			],
+			"url": "https://meet.google.com/my-incident-room",
+			"user": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			}
+		},
+		{
+			"activityItemID": "activity-item-123",
+			"activityKind": "incidentCreated",
+			"body": "The incident was created by user-123",
+			"createdTime": "2021-08-07T11:58:23Z",
+			"eventTime": "2021-08-07T11:58:23Z",
+			"fieldValues": {
+				"something-else": true,
+				"title": "new title"
+			},
+			"immutable": false,
+			"incidentID": "incident-123",
+			"subjectUser": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"tags": [
+				"important"
+			],
+			"url": "https://meet.google.com/my-incident-room",
+			"user": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			}
+		}
+	],
+	"cursor": {
+		"hasMore": true,
+		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+	},
+	"error": "something went wrong",
+	"query": {
+		"activityKind": [
+			"incidentCreated"
+		],
+		"incidentID": "incident-123",
+		"limit": 10,
+		"orderDirection": "ASC",
+		"tag": "important"
+	}
+}`
+	var dest QueryActivityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubQueryActivity: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *ActivityService) stubRemoveActivity() (*RemoveActivityResponse, error) {
+	exampleJSON := `{
+	"activityItem": {
+		"activityItemID": "activity-item-123",
+		"activityKind": "incidentCreated",
+		"body": "The incident was created by user-123",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"eventTime": "2021-08-07T11:58:23Z",
+		"fieldValues": {
+			"something-else": true,
+			"title": "new title"
+		},
+		"immutable": false,
+		"incidentID": "incident-123",
+		"subjectUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"tags": [
+			"important"
+		],
+		"url": "https://meet.google.com/my-incident-room",
+		"user": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		}
+	},
+	"error": "something went wrong"
+}`
+	var dest RemoveActivityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubRemoveActivity: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *ActivityService) stubUpdateActivityBody() (*UpdateActivityBodyResponse, error) {
+	exampleJSON := `{
+	"activityItem": {
+		"activityItemID": "activity-item-123",
+		"activityKind": "incidentCreated",
+		"body": "The incident was created by user-123",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"eventTime": "2021-08-07T11:58:23Z",
+		"fieldValues": {
+			"something-else": true,
+			"title": "new title"
+		},
+		"immutable": false,
+		"incidentID": "incident-123",
+		"subjectUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"tags": [
+			"important"
+		],
+		"url": "https://meet.google.com/my-incident-room",
+		"user": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		}
+	},
+	"error": "something went wrong"
+}`
+	var dest UpdateActivityBodyResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateActivityBody: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *ActivityService) stubUpdateActivityEventTime() (*UpdateActivityEventTimeResponse, error) {
+	exampleJSON := `{
+	"activityItem": {
+		"activityItemID": "activity-item-123",
+		"activityKind": "incidentCreated",
+		"body": "The incident was created by user-123",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"eventTime": "2021-08-07T11:58:23Z",
+		"fieldValues": {
+			"something-else": true,
+			"title": "new title"
+		},
+		"immutable": false,
+		"incidentID": "incident-123",
+		"subjectUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"tags": [
+			"important"
+		],
+		"url": "https://meet.google.com/my-incident-room",
+		"user": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		}
+	},
+	"error": "something went wrong"
+}`
+	var dest UpdateActivityEventTimeResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateActivityEventTime: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 	exampleJSON := `{
 	"error": "something went wrong",
@@ -1741,8 +2468,8 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -1789,7 +2516,7 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -1844,7 +2571,7 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 
 func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 	exampleJSON := `{
-	"didChange": null,
+	"didChange": true,
 	"error": "something went wrong",
 	"incident": {
 		"closedTime": "2021-08-07T11:58:23Z",
@@ -1854,8 +2581,8 @@ func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -1902,7 +2629,7 @@ func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -1966,8 +2693,8 @@ func (s *IncidentsService) stubCreateIncident() (*CreateIncidentResponse, error)
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2014,7 +2741,7 @@ func (s *IncidentsService) stubCreateIncident() (*CreateIncidentResponse, error)
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -2078,8 +2805,8 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2126,7 +2853,7 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -2195,8 +2922,8 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 				"userID": "user-123"
 			},
 			"createdTime": "2021-08-07T11:58:23Z",
-			"durationSeconds": null,
-			"heroImagePath": null,
+			"durationSeconds": 60,
+			"heroImagePath": "/relative/path/to/hero/image.png",
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
 			"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2243,7 +2970,7 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			],
 			"severity": "minor",
 			"status": "active",
-			"summary": null,
+			"summary": "Something happened, we found out something interesting, then we fixed it.",
 			"taskList": {
 				"doneCount": 8,
 				"tasks": [
@@ -2296,8 +3023,8 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 				"userID": "user-123"
 			},
 			"createdTime": "2021-08-07T11:58:23Z",
-			"durationSeconds": null,
-			"heroImagePath": null,
+			"durationSeconds": 60,
+			"heroImagePath": "/relative/path/to/hero/image.png",
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
 			"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2344,7 +3071,7 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			],
 			"severity": "minor",
 			"status": "active",
-			"summary": null,
+			"summary": "Something happened, we found out something interesting, then we fixed it.",
 			"taskList": {
 				"doneCount": 8,
 				"tasks": [
@@ -2428,8 +3155,8 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2476,7 +3203,7 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -2531,7 +3258,7 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 
 func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 	exampleJSON := `{
-	"didChange": null,
+	"didChange": true,
 	"error": "something went wrong",
 	"incident": {
 		"closedTime": "2021-08-07T11:58:23Z",
@@ -2541,8 +3268,8 @@ func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2589,7 +3316,7 @@ func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -2664,8 +3391,8 @@ func (s *IncidentsService) stubUpdateIncidentIsDrill() (*UpdateIncidentIsDrillRe
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2712,7 +3439,7 @@ func (s *IncidentsService) stubUpdateIncidentIsDrill() (*UpdateIncidentIsDrillRe
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -2776,8 +3503,8 @@ func (s *IncidentsService) stubUpdateSeverity() (*UpdateSeverityResponse, error)
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2824,7 +3551,7 @@ func (s *IncidentsService) stubUpdateSeverity() (*UpdateSeverityResponse, error)
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -2888,8 +3615,8 @@ func (s *IncidentsService) stubUpdateStatus() (*UpdateStatusResponse, error) {
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -2936,7 +3663,7 @@ func (s *IncidentsService) stubUpdateStatus() (*UpdateStatusResponse, error) {
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -3000,8 +3727,8 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 			"userID": "user-123"
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
-		"durationSeconds": null,
-		"heroImagePath": null,
+		"durationSeconds": 60,
+		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentStart": "2022-02-11 00:50:20.574137",
@@ -3048,7 +3775,7 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 		],
 		"severity": "minor",
 		"status": "active",
-		"summary": null,
+		"summary": "Something happened, we found out something interesting, then we fixed it.",
 		"taskList": {
 			"doneCount": 8,
 			"tasks": [
@@ -3448,6 +4175,119 @@ func (s *TasksService) stubUpdateTaskUser() (*UpdateTaskUserResponse, error) {
 // Options.IncidentSeverity.Pending.
 var Options struct {
 
+	// ActivityItemActivityKind contains the acceptable values for the
+	// ActivityItem.ActivityKind field.
+	ActivityItemActivityKind struct {
+
+		// IncidentUpdated == "incidentUpdated"
+		IncidentUpdated string
+
+		// IncidentTitleChanged == "incidentTitleChanged"
+		IncidentTitleChanged string
+
+		// IncidentStatusChanged == "incidentStatusChanged"
+		IncidentStatusChanged string
+
+		// IncidentSeverityChanged == "incidentSeverityChanged"
+		IncidentSeverityChanged string
+
+		// IncidentCreated == "incidentCreated"
+		IncidentCreated string
+
+		// IncidentDeleted == "incidentDeleted"
+		IncidentDeleted string
+
+		// IncidentClosed == "incidentClosed"
+		IncidentClosed string
+
+		// RoleAssigned == "roleAssigned"
+		RoleAssigned string
+
+		// RoleUnassigned == "roleUnassigned"
+		RoleUnassigned string
+
+		// ActionRun == "actionRun"
+		ActionRun string
+
+		// UserNote == "userNote"
+		UserNote string
+
+		// DataQuery == "dataQuery"
+		DataQuery string
+
+		// HookRunMetadata == "hookRunMetadata"
+		HookRunMetadata string
+
+		// TaskAdded == "taskAdded"
+		TaskAdded string
+
+		// TaskUpdated == "taskUpdated"
+		TaskUpdated string
+
+		// TaskCompleted == "taskCompleted"
+		TaskCompleted string
+
+		// TaskDeleted == "taskDeleted"
+		TaskDeleted string
+
+		// MessageReaction == "messageReaction"
+		MessageReaction string
+
+		// ContextAttached == "contextAttached"
+		ContextAttached string
+
+		// IncidentIsDrillChanged == "incidentIsDrillChanged"
+		IncidentIsDrillChanged string
+
+		// IncidentStart == "incidentStart"
+		IncidentStart string
+
+		// IncidentEnd == "incidentEnd"
+		IncidentEnd string
+
+		// IncidentSummary == "incidentSummary"
+		IncidentSummary string
+
+		// LabelAdded == "labelAdded"
+		LabelAdded string
+
+		// LabelRemoved == "labelRemoved"
+		LabelRemoved string
+
+		// SiftResult == "siftResult"
+		SiftResult string
+	}
+
+	// ActivityItemTags contains the acceptable values for the
+	// ActivityItem.Tags field.
+	ActivityItemTags struct {
+
+		// Important == "important"
+		Important string
+
+		// Starred == "starred"
+		Starred string
+	}
+
+	// ActivityQueryOrderDirection contains the acceptable values for the
+	// ActivityQuery.OrderDirection field.
+	ActivityQueryOrderDirection struct {
+
+		// ASC == "ASC"
+		ASC string
+
+		// DESC == "DESC"
+		DESC string
+	}
+
+	// AddActivityRequestActivityKind contains the acceptable values for the
+	// AddActivityRequest.ActivityKind field.
+	AddActivityRequestActivityKind struct {
+
+		// UserNote == "userNote"
+		UserNote string
+	}
+
 	// AssignRoleRequestRole contains the acceptable values for the
 	// AssignRoleRequest.Role field.
 	AssignRoleRequestRole struct {
@@ -3648,6 +4488,68 @@ var Options struct {
 }
 
 func init() {
+
+	Options.ActivityItemActivityKind.IncidentUpdated = "incidentUpdated"
+
+	Options.ActivityItemActivityKind.IncidentTitleChanged = "incidentTitleChanged"
+
+	Options.ActivityItemActivityKind.IncidentStatusChanged = "incidentStatusChanged"
+
+	Options.ActivityItemActivityKind.IncidentSeverityChanged = "incidentSeverityChanged"
+
+	Options.ActivityItemActivityKind.IncidentCreated = "incidentCreated"
+
+	Options.ActivityItemActivityKind.IncidentDeleted = "incidentDeleted"
+
+	Options.ActivityItemActivityKind.IncidentClosed = "incidentClosed"
+
+	Options.ActivityItemActivityKind.RoleAssigned = "roleAssigned"
+
+	Options.ActivityItemActivityKind.RoleUnassigned = "roleUnassigned"
+
+	Options.ActivityItemActivityKind.ActionRun = "actionRun"
+
+	Options.ActivityItemActivityKind.UserNote = "userNote"
+
+	Options.ActivityItemActivityKind.DataQuery = "dataQuery"
+
+	Options.ActivityItemActivityKind.HookRunMetadata = "hookRunMetadata"
+
+	Options.ActivityItemActivityKind.TaskAdded = "taskAdded"
+
+	Options.ActivityItemActivityKind.TaskUpdated = "taskUpdated"
+
+	Options.ActivityItemActivityKind.TaskCompleted = "taskCompleted"
+
+	Options.ActivityItemActivityKind.TaskDeleted = "taskDeleted"
+
+	Options.ActivityItemActivityKind.MessageReaction = "messageReaction"
+
+	Options.ActivityItemActivityKind.ContextAttached = "contextAttached"
+
+	Options.ActivityItemActivityKind.IncidentIsDrillChanged = "incidentIsDrillChanged"
+
+	Options.ActivityItemActivityKind.IncidentStart = "incidentStart"
+
+	Options.ActivityItemActivityKind.IncidentEnd = "incidentEnd"
+
+	Options.ActivityItemActivityKind.IncidentSummary = "incidentSummary"
+
+	Options.ActivityItemActivityKind.LabelAdded = "labelAdded"
+
+	Options.ActivityItemActivityKind.LabelRemoved = "labelRemoved"
+
+	Options.ActivityItemActivityKind.SiftResult = "siftResult"
+
+	Options.ActivityItemTags.Important = "important"
+
+	Options.ActivityItemTags.Starred = "starred"
+
+	Options.ActivityQueryOrderDirection.ASC = "ASC"
+
+	Options.ActivityQueryOrderDirection.DESC = "DESC"
+
+	Options.AddActivityRequestActivityKind.UserNote = "userNote"
 
 	Options.AssignRoleRequestRole.Commander = "commander"
 
