@@ -10,7 +10,7 @@ The Grafana Incident Go Client library allows you to access the Grafana Incident
 Import the package:
 
 ```
-go get github.com/grafana/incident-api/go/incident
+go get github.com/grafana/incident-api/go/incident@latest
 ```
 
 ## Make calls to the API
