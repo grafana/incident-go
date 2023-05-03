@@ -36,7 +36,7 @@ if err != nil {
 fmt.Println("declared Incident", createIncidentResp.Incident.IncidentID)
 ```
 
-## Write an Outgoing Webhook handler
+## Handle webhooks from Grafana Incident
 
 You can use the [Outgoing Webhook integration](https://grafana.com/docs/grafana-cloud/incident/integrations/configure-outgoing-webhooks/) to get Grafana Incident to POST a request on specific events.
 
