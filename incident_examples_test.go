@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/grafana/incident-go"
+	incident "github.com/grafana/incident-go"
 )
 
 // ExampleCreateIncident shows how to create an incident.

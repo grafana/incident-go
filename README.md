@@ -44,7 +44,7 @@ If you are consuming that event in Go, you can use the `incident.ParseWebhook` h
 
 ```go
 import (
-	"github.com/grafana/incident-go"
+	incident "github.com/grafana/incident-go"
 )
 
 // handleIncidentWebhook gets a handler that processes webhooks from
