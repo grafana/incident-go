@@ -1,4 +1,4 @@
-module github.com/grafana/incident-api/go/incident
+module github.com/grafana/incident-go
 
 go 1.14
 

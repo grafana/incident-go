@@ -10,7 +10,7 @@ The Grafana Incident Go Client library allows you to access the Grafana Incident
 Import the package:
 
 ```
-go get github.com/grafana/incident-api/go/incident@latest
+go get github.com/grafana/incident-go@latest
 ```
 
 ## Make calls to the API
@@ -44,7 +44,7 @@ If you are consuming that event in Go, you can use the `incident.ParseWebhook` h
 
 ```go
 import (
-	"github.com/grafana/incident-api/go/incident"
+	"github.com/grafana/incident-go"
 )
 
 // handleIncidentWebhook gets a handler that processes webhooks from

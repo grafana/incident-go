@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/grafana/incident-api/go/incident"
+	"github.com/grafana/incident-go"
 	"github.com/matryer/is"
 )
 
