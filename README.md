@@ -1,26 +1,71 @@
-Welcome to the,
+# Grafana Incident Go Client library
 
-# <img width='25' src='https://user-images.githubusercontent.com/101659/189380497-50692d2e-49bb-4fb6-91b5-ae8daf6e1988.png' />🤖 Grafana Incident API
+The Grafana Incident Go Client library allows you to access the Grafana Incident API from your Go code.
 
-**Client libraries, scripts and examples for using the Grafana Incident API.**
-
-<img width='256' src='https://grafana.com/static/assets/img/blog/grafana-incident-vertical-navigation.png' />
+- Get started with the [Grafana Incident API documentation (experimental)](https://grafana.com/docs/grafana-cloud/incident/api/experimental/)
+- Or dive deep into the [reference docs (experimental)](https://grafana.com/docs/grafana-cloud/incident/api/experimental/reference/go/)
 
 ## Get started
 
-Pick a langauge to get started:
+Import the package:
 
-- [Go (golang) client library](./go/incident)
-- More langauges coming soon - let us know what's missing in the [grafana/incident-community](https://github.com/grafana/incident-community) GitHub repo
+```
+go get github.com/grafana/incident-api/go/incident@latest
+```
 
-### Learn more
+## Make calls to the API
 
-To learn about the various ways to progammatically interact with Grafana Incident, be sure to get started with the [Grafana Incident API Documentation](https://grafana.com/docs/grafana-cloud/incident/api/).
+In this example, we will use the [IncidentsService.CreateIncident() method](https://grafana.com/docs/grafana-cloud/incident/api/experimental/reference/go/#createincident) to declare an Incident, and print its ID.
 
-## Reporting issues
+```go
+// create a client, and the services you need
+serviceAccountToken := os.Getenv("SERVICE_ACCOUNT_TOKEN")
+client := incident.NewClient("https://your-api-endpoint/api", serviceAccountToken)
+incidentsService := incident.NewIncidentsService(client)
 
-Please report issues to the [grafana/incident-community](https://github.com/grafana/incident-community) GitHub repo.
+// declare an incident
+createIncidentResp, err := incidentsService.CreateIncident(ctx, incident.CreateIncidentRequest{
+	Title: "short description explaining what's going wrong",
+	Severity: incident.Options.IncidentSeverity.Minor,
+})
+if err != nil {
+	// if something goes wrong, the error will help you
+	return fmt.Errorf("create incident: %w", err)
+}
+// success, get the details from the createIncidentResp object
+fmt.Println("declared Incident", createIncidentResp.Incident.IncidentID)
+```
 
-## What can we do better?
+## Handle webhooks from Grafana Incident
 
-The Grafana Incident team aim to deliver a high quality developer experience, so if you think of anything we can do better, please let us know by opening an issue in the [grafana/incident-community](https://github.com/grafana/incident-community) GitHub repo, and starting a conversation. We look forward to hearing from you.
+You can use the [Outgoing Webhook integration](https://grafana.com/docs/grafana-cloud/incident/integrations/configure-outgoing-webhooks/) to get Grafana Incident to POST a request on specific events.
+
+If you are consuming that event in Go, you can use the `incident.ParseWebhook` helper:
+
+```go
+import (
+	"github.com/grafana/incident-api/go/incident"
+)
+
+// handleIncidentWebhook gets a handler that processes webhooks from
+// Grafana Incident.
+// The secret should be safely injected (avoid committing it to source control).
+// Secrets can be created in the web interface when configuring the Outgoing Webhook integration.
+func handleIncidentWebhook(secret string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// incident.ParseWebhook will verify the signature and decode
+		// the body into the incident.OutgoingWebhookPayload type.
+		payload, err := incident.ParseWebhook(r, secret)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		switch payload.Event {
+		case "grafana.incident.created":
+			fmt.Printf("Incident declared: %s\n", payload.Incident.Title)
+		default:
+			fmt.Printf("Unknown event: %s\n", payload.Event)
+		}
+	}))
+}
+```
