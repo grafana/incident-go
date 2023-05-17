@@ -230,7 +230,8 @@ type CreateIncidentRequest struct {
 	// Severity expresses how bad the Incident is.
 	Severity string `json:"severity"`
 
-	// Labels are the labels associated with the Incident.
+	// Labels are the labels associated with the Incident. Only the Label string is
+	// processed, the other fields are ignored.
 	Labels []IncidentLabel `json:"labels"`
 
 	// RoomPrefix is the prefix that will be used to create the Incident room.
