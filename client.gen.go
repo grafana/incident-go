@@ -38,7 +38,7 @@ type Client struct {
 }
 
 // NewClient makes a new Client.
-// The remoteHost should be "https://your-stack.grafana.net/api/plugins/grafana-incident-app/resources/api/experimental"
+// The remoteHost should be "https://your-stack.grafana.net/api/plugins/grafana-incident-app/resources/api/v1"
 // with `your-stack.grafana.net` pointing to your instance.
 // The serviceAccountToken can be obtained from the Configuration via the web app
 // (For more information, see https://grafana.com/docs/grafana-cloud/incident/api/rpc/auth/).
@@ -478,6 +478,21 @@ type IncidentsQuery struct {
 	QueryString string `json:"queryString"`
 }
 
+// IncomingWebhookResponse is the response sent back to the webhook caller when an
+// incoming webhook has been received.
+type IncomingWebhookResponse struct {
+
+	// Incident is the newly declared incident. Only included if the incoming webhook
+	// has the include=incident URL parameter.
+	Incident *Incident `json:"incident"`
+
+	// ProcessingErrors is a list of errors that occurred while processing the webhook.
+	// If there are items in this list it does not mean the incident wasn't created.
+	// But you should check to make sure everything was successfully processed before
+	// shipping to production.
+	ProcessingErrors []string `json:"processingErrors"`
+}
+
 // OutgoingWebhookPayload represents the webhook HTTP POST body and contains
 // metadata for the webhook.
 type OutgoingWebhookPayload struct {
@@ -573,8 +588,8 @@ type RemoveLabelRequest struct {
 	// IncidentID is the identifier of the Incident.
 	IncidentID string `json:"incidentID"`
 
-	// Label is the new label of the Incident.
-	Label IncidentLabel `json:"label"`
+	// Label is the label to remove from the Incident.
+	Label string `json:"label"`
 }
 
 // RemoveLabelResponse is the response for the RemoveLabel call.
@@ -2478,13 +2493,13 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -2591,13 +2606,13 @@ func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -2703,13 +2718,13 @@ func (s *IncidentsService) stubCreateIncident() (*CreateIncidentResponse, error)
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -2815,13 +2830,13 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -2932,13 +2947,13 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			"labels": [
 				{
 					"colorHex": "#ff0000",
-					"description": "High latency in web requests",
-					"label": "high-latency"
+					"description": "Customers are affected by this incident.",
+					"label": "customers-affected"
 				},
 				{
 					"colorHex": "#ff0000",
-					"description": "High latency in web requests",
-					"label": "high-latency"
+					"description": "Customers are affected by this incident.",
+					"label": "customers-affected"
 				}
 			],
 			"modifiedTime": "2021-08-07T11:58:23Z",
@@ -3033,13 +3048,13 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			"labels": [
 				{
 					"colorHex": "#ff0000",
-					"description": "High latency in web requests",
-					"label": "high-latency"
+					"description": "Customers are affected by this incident.",
+					"label": "customers-affected"
 				},
 				{
 					"colorHex": "#ff0000",
-					"description": "High latency in web requests",
-					"label": "high-latency"
+					"description": "Customers are affected by this incident.",
+					"label": "customers-affected"
 				}
 			],
 			"modifiedTime": "2021-08-07T11:58:23Z",
@@ -3165,13 +3180,13 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -3278,13 +3293,13 @@ func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -3401,13 +3416,13 @@ func (s *IncidentsService) stubUpdateIncidentIsDrill() (*UpdateIncidentIsDrillRe
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -3513,13 +3528,13 @@ func (s *IncidentsService) stubUpdateSeverity() (*UpdateSeverityResponse, error)
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -3625,13 +3640,13 @@ func (s *IncidentsService) stubUpdateStatus() (*UpdateStatusResponse, error) {
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
@@ -3737,13 +3752,13 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 		"labels": [
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
-				"description": "High latency in web requests",
-				"label": "high-latency"
+				"description": "Customers are affected by this incident.",
+				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
