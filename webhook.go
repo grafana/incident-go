@@ -17,8 +17,8 @@ import (
 // ParseWebhook parses an Outgoing Webhook from Grafana Incident.
 // Use this function when writing code to handle the event.
 // The signature will be verified using the known secret.
-func ParseWebhook(r *http.Request, secret string) (*OutgoingWebhookPayload, error) {
-	err := VerifySignature(r, secret)
+func ParseWebhook(r *http.Request, signingSecret string) (*OutgoingWebhookPayload, error) {
+	err := VerifySignature(r, signingSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
@@ -36,7 +36,7 @@ func ParseWebhook(r *http.Request, secret string) (*OutgoingWebhookPayload, erro
 
 // VerifySignature checks Gi-Signature header against the secret you
 // got when enabling the integration in the tool.
-func VerifySignature(r *http.Request, secret string) error {
+func VerifySignature(r *http.Request, signingSecret string) error {
 	header := r.Header["Gi-Signature"]
 	if len(header) == 0 || header[0] == "" {
 		return errors.New("empty GI-Signature")
@@ -57,7 +57,7 @@ func VerifySignature(r *http.Request, secret string) error {
 	}
 	bodyHash := Hash(payload)
 	stringToSign := bodyHash + ":" + t + ":v1"
-	expected := GenerateSignature([]byte(stringToSign), secret)
+	expected := GenerateSignature([]byte(stringToSign), signingSecret)
 	if expected != v1 {
 		return errors.New("invalid GI-Signature")
 	}
