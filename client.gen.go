@@ -109,6 +109,9 @@ type ActivityItem struct {
 	// FieldValues is an object of field values associated with the ActivityItem.
 	// The structure is determined by the ActivityKind.
 	FieldValues map[string]interface{} `json:"fieldValues"`
+
+	// Attachments is a list of files attached to this item.
+	Attachments []Attachment `json:"attachments"`
 }
 
 // ActivityQuery is the response from the QueryActivity method.
@@ -218,6 +221,63 @@ type AssignRoleResponse struct {
 	// DidChange indicates if the role was changed or not. If the role was already
 	// assigned, this will be false.
 	DidChange bool `json:"didChange"`
+}
+
+// Attachment is a file attached to something.
+type Attachment struct {
+
+	// AttachmentID is the unique ID of this attachment.
+	AttachmentID string `json:"attachmentID"`
+
+	// AttachedByUserID is the ID of the user who attached this.
+	AttachedByUserID string `json:"attachedByUserID"`
+
+	// SourceURL is the URL of the file.
+	SourceURL string `json:"sourceURL"`
+
+	// UseSourceURL is true if the file should be downloaded from the source URL.
+	UseSourceURL bool `json:"useSourceURL"`
+
+	// Path is the full path of the file.
+	Path string `json:"path"`
+
+	// UploadTime is the time the file was uploaded.
+	UploadTime string `json:"uploadTime"`
+
+	// DeletedTime is the time the file was deleted. Empty string means the file hasn't
+	// been deleted.
+	DeletedTime string `json:"deletedTime"`
+
+	// ContentType is the type of the file.
+	ContentType string `json:"contentType"`
+
+	// FileType is the type of file.
+	FileType string `json:"fileType"`
+
+	// Ext is the file extension.
+	Ext string `json:"ext"`
+
+	// ContentLength is the ContentLength of the file in bytes.
+	ContentLength int64 `json:"contentLength"`
+
+	// DisplayType is how the file will be displayed.
+	DisplayType string `json:"displayType"`
+
+	// DownloadURL for download
+	DownloadURL string `json:"downloadURL"`
+
+	// HasThumbnail is true if the file has a thumbnail.
+	HasThumbnail bool `json:"hasThumbnail"`
+
+	// ThumbnailURL for previews
+	ThumbnailURL string `json:"thumbnailURL"`
+
+	// SHA512 is the hash of the file contents.
+	SHA512 string `json:"sHA512"`
+
+	// AttachmentErr is a string describing an error that occurred while processing the
+	// attachment.
+	AttachmentErr string `json:"attachmentErr"`
 }
 
 // CreateIncidentRequest is the request for the CreateIncident call.
@@ -2246,6 +2306,46 @@ func (s *ActivityService) stubAddActivity() (*AddActivityResponse, error) {
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -2285,6 +2385,46 @@ func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
 		{
 			"activityItemID": "activity-item-123",
 			"activityKind": "incidentCreated",
+			"attachments": [
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				},
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				}
+			],
 			"body": "The incident was created by user-123",
 			"createdTime": "2021-08-07T11:58:23Z",
 			"eventTime": "2021-08-07T11:58:23Z",
@@ -2312,6 +2452,46 @@ func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
 		{
 			"activityItemID": "activity-item-123",
 			"activityKind": "incidentCreated",
+			"attachments": [
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				},
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				}
+			],
 			"body": "The incident was created by user-123",
 			"createdTime": "2021-08-07T11:58:23Z",
 			"eventTime": "2021-08-07T11:58:23Z",
@@ -2364,6 +2544,46 @@ func (s *ActivityService) stubRemoveActivity() (*RemoveActivityResponse, error) 
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -2402,6 +2622,46 @@ func (s *ActivityService) stubUpdateActivityBody() (*UpdateActivityBodyResponse,
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -2440,6 +2700,46 @@ func (s *ActivityService) stubUpdateActivityEventTime() (*UpdateActivityEventTim
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -4318,6 +4618,37 @@ var Options struct {
 		Observer string
 	}
 
+	// AttachmentFileType contains the acceptable values for the
+	// Attachment.FileType field.
+	AttachmentFileType struct {
+
+		// File == "file"
+		File string
+
+		// Video == "video"
+		Video string
+
+		// Image == "image"
+		Image string
+
+		// Audio == "audio"
+		Audio string
+
+		// Screenshare == "screenshare"
+		Screenshare string
+	}
+
+	// AttachmentDisplayType contains the acceptable values for the
+	// Attachment.DisplayType field.
+	AttachmentDisplayType struct {
+
+		// List == "list"
+		List string
+
+		// Embed == "embed"
+		Embed string
+	}
+
 	// CreateIncidentRequestSeverity contains the acceptable values for the
 	// CreateIncidentRequest.Severity field.
 	CreateIncidentRequestSeverity struct {
@@ -4572,6 +4903,20 @@ func init() {
 	Options.AssignRoleRequestRole.Investigator = "investigator"
 
 	Options.AssignRoleRequestRole.Observer = "observer"
+
+	Options.AttachmentFileType.File = "file"
+
+	Options.AttachmentFileType.Video = "video"
+
+	Options.AttachmentFileType.Image = "image"
+
+	Options.AttachmentFileType.Audio = "audio"
+
+	Options.AttachmentFileType.Screenshare = "screenshare"
+
+	Options.AttachmentDisplayType.List = "list"
+
+	Options.AttachmentDisplayType.Embed = "embed"
 
 	Options.CreateIncidentRequestSeverity.Pending = "pending"
 
