@@ -9,12 +9,16 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 )
+
+// UserAgent is the User-Agent string used when making HTTP requests.
+var UserAgent = "incident-go/v1.92.2"
 
 // Client is used to access services.
 type Client struct {
@@ -1990,8 +1994,10 @@ func (s *ActivityService) AddActivity(ctx context.Context, r AddActivityRequest)
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.AddActivity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2029,7 +2035,7 @@ func (s *ActivityService) AddActivity(ctx context.Context, r AddActivityRequest)
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddActivityResponse, nil
 }
@@ -2050,8 +2056,10 @@ func (s *ActivityService) QueryActivity(ctx context.Context, r QueryActivityRequ
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.QueryActivity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2089,7 +2097,7 @@ func (s *ActivityService) QueryActivity(ctx context.Context, r QueryActivityRequ
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.QueryActivityResponse, nil
 }
@@ -2110,8 +2118,10 @@ func (s *ActivityService) RemoveActivity(ctx context.Context, r RemoveActivityRe
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.RemoveActivity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2149,7 +2159,7 @@ func (s *ActivityService) RemoveActivity(ctx context.Context, r RemoveActivityRe
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.RemoveActivityResponse, nil
 }
@@ -2170,8 +2180,10 @@ func (s *ActivityService) UpdateActivityBody(ctx context.Context, r UpdateActivi
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2209,7 +2221,7 @@ func (s *ActivityService) UpdateActivityBody(ctx context.Context, r UpdateActivi
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateActivityBodyResponse, nil
 }
@@ -2230,8 +2242,10 @@ func (s *ActivityService) UpdateActivityEventTime(ctx context.Context, r UpdateA
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2269,7 +2283,7 @@ func (s *ActivityService) UpdateActivityEventTime(ctx context.Context, r UpdateA
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateActivityEventTimeResponse, nil
 }
@@ -2290,8 +2304,10 @@ func (s *ActivityService) UpdateActivityRelevance(ctx context.Context, r UpdateA
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2329,7 +2345,7 @@ func (s *ActivityService) UpdateActivityRelevance(ctx context.Context, r UpdateA
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateActivityRelevanceResponse, nil
 }
@@ -2364,8 +2380,10 @@ func (s *FieldsService) AddField(ctx context.Context, r AddFieldRequest) (*AddFi
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddField: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2403,7 +2421,7 @@ func (s *FieldsService) AddField(ctx context.Context, r AddFieldRequest) (*AddFi
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddFieldResponse, nil
 }
@@ -2424,8 +2442,10 @@ func (s *FieldsService) AddFieldSelectOption(ctx context.Context, r AddFieldSele
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2463,7 +2483,7 @@ func (s *FieldsService) AddFieldSelectOption(ctx context.Context, r AddFieldSele
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddFieldSelectOptionResponse, nil
 }
@@ -2484,8 +2504,10 @@ func (s *FieldsService) AddLabelKey(ctx context.Context, r AddLabelKeyRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddLabelKey: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2523,7 +2545,7 @@ func (s *FieldsService) AddLabelKey(ctx context.Context, r AddLabelKeyRequest) (
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddLabelKeyResponse, nil
 }
@@ -2544,8 +2566,10 @@ func (s *FieldsService) AddLabelValue(ctx context.Context, r AddLabelValueReques
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddLabelValue: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2583,7 +2607,7 @@ func (s *FieldsService) AddLabelValue(ctx context.Context, r AddLabelValueReques
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddLabelValueResponse, nil
 }
@@ -2604,8 +2628,10 @@ func (s *FieldsService) ArchiveField(ctx context.Context, r ArchiveFieldRequest)
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.ArchiveField: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2643,7 +2669,7 @@ func (s *FieldsService) ArchiveField(ctx context.Context, r ArchiveFieldRequest)
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.ArchiveFieldResponse, nil
 }
@@ -2664,8 +2690,10 @@ func (s *FieldsService) DeleteField(ctx context.Context, r DeleteFieldRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.DeleteField: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2703,7 +2731,7 @@ func (s *FieldsService) DeleteField(ctx context.Context, r DeleteFieldRequest) (
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.DeleteFieldResponse, nil
 }
@@ -2724,8 +2752,10 @@ func (s *FieldsService) DeleteFieldSelectOption(ctx context.Context, r DeleteFie
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2763,7 +2793,7 @@ func (s *FieldsService) DeleteFieldSelectOption(ctx context.Context, r DeleteFie
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.DeleteFieldSelectOptionResponse, nil
 }
@@ -2784,8 +2814,10 @@ func (s *FieldsService) GetField(ctx context.Context, r GetFieldRequest) (*GetFi
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.GetField: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2823,7 +2855,7 @@ func (s *FieldsService) GetField(ctx context.Context, r GetFieldRequest) (*GetFi
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetFieldResponse, nil
 }
@@ -2844,8 +2876,10 @@ func (s *FieldsService) GetFieldValues(ctx context.Context, r GetFieldValuesRequ
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.GetFieldValues: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2883,7 +2917,7 @@ func (s *FieldsService) GetFieldValues(ctx context.Context, r GetFieldValuesRequ
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetFieldValuesResponse, nil
 }
@@ -2904,8 +2938,10 @@ func (s *FieldsService) GetFields(ctx context.Context, r GetFieldsRequest) (*Get
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.GetFields: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2943,7 +2979,7 @@ func (s *FieldsService) GetFields(ctx context.Context, r GetFieldsRequest) (*Get
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetFieldsResponse, nil
 }
@@ -2964,8 +3000,10 @@ func (s *FieldsService) UnarchiveField(ctx context.Context, r UnarchiveFieldRequ
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.UnarchiveField: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3003,7 +3041,7 @@ func (s *FieldsService) UnarchiveField(ctx context.Context, r UnarchiveFieldRequ
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UnarchiveFieldResponse, nil
 }
@@ -3024,8 +3062,10 @@ func (s *FieldsService) UpdateField(ctx context.Context, r UpdateFieldRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.UpdateField: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3063,7 +3103,7 @@ func (s *FieldsService) UpdateField(ctx context.Context, r UpdateFieldRequest) (
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateFieldResponse, nil
 }
@@ -3084,8 +3124,10 @@ func (s *FieldsService) UpdateFieldSelectOption(ctx context.Context, r UpdateFie
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3123,7 +3165,7 @@ func (s *FieldsService) UpdateFieldSelectOption(ctx context.Context, r UpdateFie
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateFieldSelectOptionResponse, nil
 }
@@ -3159,8 +3201,10 @@ func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*Ad
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AddLabel: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3198,7 +3242,7 @@ func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*Ad
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddLabelResponse, nil
 }
@@ -3219,8 +3263,10 @@ func (s *IncidentsService) AssignLabel(ctx context.Context, r AssignLabelRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AssignLabel: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3258,7 +3304,7 @@ func (s *IncidentsService) AssignLabel(ctx context.Context, r AssignLabelRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AssignLabelResponse, nil
 }
@@ -3279,8 +3325,10 @@ func (s *IncidentsService) AssignLabelByUUID(ctx context.Context, r AssignLabelB
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3318,7 +3366,7 @@ func (s *IncidentsService) AssignLabelByUUID(ctx context.Context, r AssignLabelB
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AssignLabelByUUIDResponse, nil
 }
@@ -3339,8 +3387,10 @@ func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AssignRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3378,7 +3428,7 @@ func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) 
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AssignRoleResponse, nil
 }
@@ -3399,8 +3449,10 @@ func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.CreateIncident: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3438,7 +3490,7 @@ func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.CreateIncidentResponse, nil
 }
@@ -3459,8 +3511,10 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetIncident: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3498,7 +3552,7 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetIncidentResponse, nil
 }
@@ -3520,8 +3574,10 @@ func (s *IncidentsService) GetIncidentMembership(ctx context.Context, r GetIncid
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3559,7 +3615,7 @@ func (s *IncidentsService) GetIncidentMembership(ctx context.Context, r GetIncid
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetIncidentMembershipResponse, nil
 }
@@ -3580,8 +3636,10 @@ func (s *IncidentsService) GetLabels(ctx context.Context, r GetLabelsRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetLabels: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3619,7 +3677,7 @@ func (s *IncidentsService) GetLabels(ctx context.Context, r GetLabelsRequest) (*
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetLabelsResponse, nil
 }
@@ -3640,8 +3698,10 @@ func (s *IncidentsService) QueryIncidentPreviews(ctx context.Context, r QueryInc
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3679,7 +3739,7 @@ func (s *IncidentsService) QueryIncidentPreviews(ctx context.Context, r QueryInc
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.QueryIncidentPreviewsResponse, nil
 }
@@ -3701,8 +3761,10 @@ func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.QueryIncidents: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3740,7 +3802,7 @@ func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.QueryIncidentsResponse, nil
 }
@@ -3761,8 +3823,10 @@ func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.RemoveLabel: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3800,7 +3864,7 @@ func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.RemoveLabelResponse, nil
 }
@@ -3821,8 +3885,10 @@ func (s *IncidentsService) UnassignLabel(ctx context.Context, r UnassignLabelReq
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UnassignLabel: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3860,7 +3926,7 @@ func (s *IncidentsService) UnassignLabel(ctx context.Context, r UnassignLabelReq
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UnassignLabelResponse, nil
 }
@@ -3881,8 +3947,10 @@ func (s *IncidentsService) UnassignLabelByUUID(ctx context.Context, r UnassignLa
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3920,7 +3988,7 @@ func (s *IncidentsService) UnassignLabelByUUID(ctx context.Context, r UnassignLa
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UnassignLabelByUUIDResponse, nil
 }
@@ -3941,8 +4009,10 @@ func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleReque
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UnassignRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -3980,7 +4050,7 @@ func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UnassignRoleResponse, nil
 }
@@ -4001,8 +4071,10 @@ func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r Update
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4040,7 +4112,7 @@ func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r Update
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateIncidentEventTimeResponse, nil
 }
@@ -4061,8 +4133,10 @@ func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIn
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4100,7 +4174,7 @@ func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIn
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateIncidentIsDrillResponse, nil
 }
@@ -4121,8 +4195,10 @@ func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4160,7 +4236,7 @@ func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateSeverityResponse, nil
 }
@@ -4181,8 +4257,10 @@ func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusReque
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateStatus: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4220,7 +4298,7 @@ func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateStatusResponse, nil
 }
@@ -4241,8 +4319,10 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateTitle: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4280,7 +4360,7 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTitleResponse, nil
 }
@@ -4314,8 +4394,10 @@ func (s *IntegrationService) DisableHook(ctx context.Context, r DisableHookReque
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.DisableHook: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4353,7 +4435,7 @@ func (s *IntegrationService) DisableHook(ctx context.Context, r DisableHookReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.DisableHookResponse, nil
 }
@@ -4374,8 +4456,10 @@ func (s *IntegrationService) EnableHook(ctx context.Context, r EnableHookRequest
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.EnableHook: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4413,7 +4497,7 @@ func (s *IntegrationService) EnableHook(ctx context.Context, r EnableHookRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.EnableHookResponse, nil
 }
@@ -4434,8 +4518,10 @@ func (s *IntegrationService) GetHookRuns(ctx context.Context, r GetHookRunsReque
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.GetHookRuns: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4473,7 +4559,7 @@ func (s *IntegrationService) GetHookRuns(ctx context.Context, r GetHookRunsReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetHookRunsResponse, nil
 }
@@ -4508,8 +4594,10 @@ func (s *RolesService) ArchiveRole(ctx context.Context, r ArchiveRoleRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.ArchiveRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4547,7 +4635,7 @@ func (s *RolesService) ArchiveRole(ctx context.Context, r ArchiveRoleRequest) (*
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.ArchiveRoleResponse, nil
 }
@@ -4568,8 +4656,10 @@ func (s *RolesService) CreateRole(ctx context.Context, r CreateRoleRequest) (*Cr
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.CreateRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4607,7 +4697,7 @@ func (s *RolesService) CreateRole(ctx context.Context, r CreateRoleRequest) (*Cr
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.CreateRoleResponse, nil
 }
@@ -4628,8 +4718,10 @@ func (s *RolesService) DeleteRole(ctx context.Context, r DeleteRoleRequest) (*De
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.DeleteRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4667,7 +4759,7 @@ func (s *RolesService) DeleteRole(ctx context.Context, r DeleteRoleRequest) (*De
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.DeleteRoleResponse, nil
 }
@@ -4688,8 +4780,10 @@ func (s *RolesService) GetRoles(ctx context.Context, r GetRolesRequest) (*GetRol
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.GetRoles: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4727,7 +4821,7 @@ func (s *RolesService) GetRoles(ctx context.Context, r GetRolesRequest) (*GetRol
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetRolesResponse, nil
 }
@@ -4748,8 +4842,10 @@ func (s *RolesService) UnarchiveRole(ctx context.Context, r UnarchiveRoleRequest
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.UnarchiveRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4787,7 +4883,7 @@ func (s *RolesService) UnarchiveRole(ctx context.Context, r UnarchiveRoleRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UnarchiveRoleResponse, nil
 }
@@ -4808,8 +4904,10 @@ func (s *RolesService) UpdateRole(ctx context.Context, r UpdateRoleRequest) (*Up
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.UpdateRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4847,7 +4945,7 @@ func (s *RolesService) UpdateRole(ctx context.Context, r UpdateRoleRequest) (*Up
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateRoleResponse, nil
 }
@@ -4881,8 +4979,10 @@ func (s *TasksService) AddTask(ctx context.Context, r AddTaskRequest) (*AddTaskR
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.AddTask: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4920,7 +5020,7 @@ func (s *TasksService) AddTask(ctx context.Context, r AddTaskRequest) (*AddTaskR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddTaskResponse, nil
 }
@@ -4941,8 +5041,10 @@ func (s *TasksService) DeleteTask(ctx context.Context, r DeleteTaskRequest) (*De
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.DeleteTask: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -4980,7 +5082,7 @@ func (s *TasksService) DeleteTask(ctx context.Context, r DeleteTaskRequest) (*De
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.DeleteTaskResponse, nil
 }
@@ -5001,8 +5103,10 @@ func (s *TasksService) UpdateTaskStatus(ctx context.Context, r UpdateTaskStatusR
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -5040,7 +5144,7 @@ func (s *TasksService) UpdateTaskStatus(ctx context.Context, r UpdateTaskStatusR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTaskStatusResponse, nil
 }
@@ -5061,8 +5165,10 @@ func (s *TasksService) UpdateTaskText(ctx context.Context, r UpdateTaskTextReque
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskText: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -5100,7 +5206,7 @@ func (s *TasksService) UpdateTaskText(ctx context.Context, r UpdateTaskTextReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTaskTextResponse, nil
 }
@@ -5122,8 +5228,10 @@ func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserReque
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskUser: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -5161,7 +5269,7 @@ func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTaskUserResponse, nil
 }
@@ -5195,8 +5303,10 @@ func (s *UsersService) GetUser(ctx context.Context, r GetUserRequest) (*GetUserR
 	if err != nil {
 		return nil, fmt.Errorf("UsersService.GetUser: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -5234,7 +5344,7 @@ func (s *UsersService) GetUser(ctx context.Context, r GetUserRequest) (*GetUserR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetUserResponse, nil
 }
@@ -5255,8 +5365,10 @@ func (s *UsersService) QueryUsers(ctx context.Context, r QueryUsersRequest) (*Qu
 	if err != nil {
 		return nil, fmt.Errorf("UsersService.QueryUsers: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -5294,7 +5406,7 @@ func (s *UsersService) QueryUsers(ctx context.Context, r QueryUsersRequest) (*Qu
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.QueryUsersResponse, nil
 }
