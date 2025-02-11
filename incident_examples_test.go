@@ -18,7 +18,7 @@ func ExampleCreateIncident() {
 	incidentsService := incident.NewIncidentsService(client)
 	createIncidentResp, err := incidentsService.CreateIncident(ctx, incident.CreateIncidentRequest{
 		Title:    "high latency in web requests",
-		Severity: incident.Options.IncidentSeverity.Minor,
+		Severity: "minor",
 	})
 	if err != nil {
 		log.Fatalf("%s", err)

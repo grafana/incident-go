@@ -9,12 +9,16 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 )
+
+// UserAgent is the User-Agent string used when making HTTP requests.
+var UserAgent = "incident-go/v1.92.2"
 
 // Client is used to access services.
 type Client struct {
@@ -109,6 +113,13 @@ type ActivityItem struct {
 	// FieldValues is an object of field values associated with the ActivityItem.
 	// The structure is determined by the ActivityKind.
 	FieldValues map[string]interface{} `json:"fieldValues"`
+
+	// Attachments is a list of files attached to this item.
+	Attachments []Attachment `json:"attachments"`
+
+	// Relevance is the preferred relevance of the activity item. if set to 'automatic'
+	// (the default), the relevance will be guessed automatically.
+	Relevance string `json:"relevance"`
 }
 
 // ActivityQuery is the response from the QueryActivity method.
@@ -130,7 +141,7 @@ type ActivityQuery struct {
 	ActivityKind []string `json:"activityKind"`
 }
 
-// AddActivityRequest is the request for the AddActivity operation.
+// AddActivityRequest is the request for the AddActivity method.
 type AddActivityRequest struct {
 
 	// IncidentID is the unique identifier of the Incident.
@@ -155,7 +166,61 @@ type AddActivityResponse struct {
 	ActivityItem ActivityItem `json:"activityItem"`
 }
 
-// AddLabelRequest is the request for the AddLabel call.
+// AddFieldRequest is the request struct for api AddField method.
+type AddFieldRequest struct {
+
+	// Field is the field to add.
+	Field CustomMetadataField `json:"field"`
+}
+
+// AddFieldResponse is the response from the AddField method.
+type AddFieldResponse struct {
+
+	// Field is the field that was added.
+	Field CustomMetadataField `json:"field"`
+}
+
+// AddFieldSelectOptionRequest is the request struct for AddFieldSelectOption
+// method.
+type AddFieldSelectOptionRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+
+	// FieldSelectOption is the new field select option.
+	FieldSelectOption CustomMetadataFieldSelectOption `json:"fieldSelectOption"`
+}
+
+// AddFieldSelectOptionResponse is the response from the AddFieldSelectOption
+// method.
+type AddFieldSelectOptionResponse struct {
+
+	// FieldSelectOptionUUID is the UUID of the field select option that was added.
+	FieldSelectOptionUUID string `json:"fieldSelectOptionUUID"`
+}
+
+// AddLabelKeyRequest is the request for the AddLabelKey method.
+type AddLabelKeyRequest struct {
+
+	// Key is the label key.
+	Key string `json:"key"`
+
+	// Description is a short explanation of the label.
+	Description string `json:"description"`
+
+	// Color is the CSS hex color of the label. Labels show up in both light and dark
+	// modes, and this should be taken into consideration when selecting a color.
+	ColorHex string `json:"colorHex"`
+}
+
+// AddLabelKeyResponse is the response for the AddLabelKey method.
+type AddLabelKeyResponse struct {
+
+	// Field is the field that was added.
+	Field CustomMetadataField `json:"field"`
+}
+
+// AddLabelRequest is the request for the AddLabel method.
 type AddLabelRequest struct {
 
 	// IncidentID is the identifier of the Incident.
@@ -165,13 +230,38 @@ type AddLabelRequest struct {
 	Label IncidentLabel `json:"label"`
 }
 
-// AddLabelResponse is the response for the AddLabel call.
+// AddLabelResponse is the response for the AddLabel method.
 type AddLabelResponse struct {
 
 	// Incident is the Incident that was just modified.
 	Incident Incident `json:"incident"`
 }
 
+// AddLabelValueRequest is the request for the AddLabelValue method.
+type AddLabelValueRequest struct {
+
+	// Key is the label key.
+	Key string `json:"key"`
+
+	// Value is the label value.
+	Value string `json:"value"`
+
+	// Description is a short explanation of the label value.
+	Description string `json:"description"`
+
+	// Color is the CSS hex color of the label value. Labels show up in both light and
+	// dark modes, and this should be taken into consideration when selecting a color.
+	ColorHex string `json:"colorHex"`
+}
+
+// AddLabelValueResponse is the response for the AddLabelValue method.
+type AddLabelValueResponse struct {
+
+	// Field is the field that was updated.
+	Field CustomMetadataField `json:"field"`
+}
+
+// AddTaskRequest is the request for the AddTask method.
 type AddTaskRequest struct {
 
 	// IncidentID is the ID of the Incident to add the Task to.
@@ -184,6 +274,7 @@ type AddTaskRequest struct {
 	AssignToUserId string `json:"assignToUserID"`
 }
 
+// AddTaskResponse is the response from the AddTask method.
 type AddTaskResponse struct {
 
 	// IncidentID is the ID of the incident these tasks relate to.
@@ -196,7 +287,69 @@ type AddTaskResponse struct {
 	TaskList TaskList `json:"taskList"`
 }
 
-// AssignRoleRequest is the request for the AssignRole call.
+// ArchiveFieldRequest is the request struct for api ArchiveField method.
+type ArchiveFieldRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+}
+
+// ArchiveFieldResponse is the response from the ArchiveField method.
+type ArchiveFieldResponse struct {
+}
+
+// ArchiveRoleRequest is the request to archive a role.
+type ArchiveRoleRequest struct {
+
+	// Role to be archived to the organization
+	RoleID int `json:"roleID"`
+}
+
+// ArchiveRoleResponse is the response to archive a role.
+type ArchiveRoleResponse struct {
+}
+
+// AssignLabelByUUIDRequest is the request for the AssignLabelByUUID method.
+type AssignLabelByUUIDRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// KeyUUID is the label key uuid.
+	KeyUUID string `json:"keyUUID"`
+
+	// ValueUUID is the UUID of the label value.
+	ValueUUID string `json:"valueUUID"`
+}
+
+// AssignLabelByUUIDResponse is the response from the AssignLabelByUUID method.
+type AssignLabelByUUIDResponse struct {
+
+	// Labels is a list of labels
+	Labels []IncidentKeyValueLabel `json:"labels"`
+}
+
+// AssignLabelRequest is the request for the AssignLabel method.
+type AssignLabelRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Key is the label key.
+	Key string `json:"key"`
+
+	// Value is the value of the label.
+	Value string `json:"value"`
+}
+
+// AssignLabelResponse is the response from the AssignLabel method.
+type AssignLabelResponse struct {
+
+	// Labels is a list of labels
+	Labels []IncidentKeyValueLabel `json:"labels"`
+}
+
+// AssignRoleRequest is the request for the AssignRole method.
 type AssignRoleRequest struct {
 
 	// IncidentID is the identifier.
@@ -209,7 +362,7 @@ type AssignRoleRequest struct {
 	Role string `json:"role"`
 }
 
-// AssignRoleResponse is the response for the AssignRole call.
+// AssignRoleResponse is the response for the AssignRole method.
 type AssignRoleResponse struct {
 
 	// Incident is the Incident that was just updated.
@@ -220,7 +373,88 @@ type AssignRoleResponse struct {
 	DidChange bool `json:"didChange"`
 }
 
-// CreateIncidentRequest is the request for the CreateIncident call.
+// Relation between a User and a Role inside the incident
+type Assignment struct {
+
+	// User is the person who holds this role.
+	User UserPreview `json:"user"`
+
+	// Role is the role string.
+	Role Role `json:"role"`
+
+	// RoleID is the identifier of the role.
+	RoleID int `json:"roleID"`
+}
+
+// AssignmentPreview describes a person assigned to an incident without the Role
+// object.
+type AssignmentPreview struct {
+
+	// User is the person who holds this role.
+	User UserPreview `json:"user"`
+
+	// RoleID is the identifier of the role.
+	RoleID int `json:"roleID"`
+}
+
+// Attachment is a file attached to something.
+type Attachment struct {
+
+	// AttachmentID is the unique ID of this attachment.
+	AttachmentID string `json:"attachmentID"`
+
+	// AttachedByUserID is the ID of the user who attached this.
+	AttachedByUserID string `json:"attachedByUserID"`
+
+	// SourceURL is the URL of the file.
+	SourceURL string `json:"sourceURL"`
+
+	// UseSourceURL is true if the file should be downloaded from the source URL.
+	UseSourceURL bool `json:"useSourceURL"`
+
+	// Path is the full path of the file.
+	Path string `json:"path"`
+
+	// UploadTime is the time the file was uploaded.
+	UploadTime string `json:"uploadTime"`
+
+	// DeletedTime is the time the file was deleted. Empty string means the file hasn't
+	// been deleted.
+	DeletedTime string `json:"deletedTime"`
+
+	// ContentType is the type of the file.
+	ContentType string `json:"contentType"`
+
+	// FileType is the type of file.
+	FileType string `json:"fileType"`
+
+	// Ext is the file extension.
+	Ext string `json:"ext"`
+
+	// ContentLength is the ContentLength of the file in bytes.
+	ContentLength int64 `json:"contentLength"`
+
+	// DisplayType is how the file will be displayed.
+	DisplayType string `json:"displayType"`
+
+	// DownloadURL for download
+	DownloadURL string `json:"downloadURL"`
+
+	// HasThumbnail is true if the file has a thumbnail.
+	HasThumbnail bool `json:"hasThumbnail"`
+
+	// ThumbnailURL for previews
+	ThumbnailURL string `json:"thumbnailURL"`
+
+	// SHA512 is the hash of the file contents.
+	SHA512 string `json:"sHA512"`
+
+	// AttachmentErr is a string describing an error that occurred while processing the
+	// attachment.
+	AttachmentErr string `json:"attachmentErr"`
+}
+
+// CreateIncidentRequest is the request for the CreateIncident method.
 type CreateIncidentRequest struct {
 
 	// Title is the headline title of the Incident. Shorter the better, but should
@@ -253,11 +487,25 @@ type CreateIncidentRequest struct {
 	AttachURL string `json:"attachURL"`
 }
 
-// CreateIncidentResponse is the response for the CreateIncident call.
+// CreateIncidentResponse is the response for the CreateIncident method.
 type CreateIncidentResponse struct {
 
 	// Incident is the Incident that was created.
 	Incident Incident `json:"incident"`
+}
+
+// CreateRoleRequest is the request to create a role.
+type CreateRoleRequest struct {
+
+	// Role to be created to the organization
+	Role Role `json:"role"`
+}
+
+// CreateRoleResponse is the response to create a role.
+type CreateRoleResponse struct {
+
+	// Role is the newly created role.
+	Role Role `json:"role"`
 }
 
 // Cursor describes the position in a result set. It is passed back into the same
@@ -274,6 +522,136 @@ type Cursor struct {
 	HasMore bool `json:"hasMore"`
 }
 
+// CustomMetadataField is a custom metadata field.
+type CustomMetadataField struct {
+
+	// UUID is the UUID of the field.
+	UUID string `json:"uuid"`
+
+	// Name is the name of the field.
+	Name string `json:"name"`
+
+	// Slug is the slug of the field. Used for searching and referencing the field as a
+	// metric.
+	Slug string `json:"slug"`
+
+	// Color is the field color.
+	Color string `json:"color"`
+
+	// Icon is the field icon.
+	Icon string `json:"icon"`
+
+	// Description is the description of the field.
+	Description string `json:"description"`
+
+	// Type is the type of the field.
+	Type string `json:"type"`
+
+	// Required is whether this field is required.
+	Required bool `json:"required"`
+
+	// Immutable indicates if the field can by modified by the user.
+	Immutable bool `json:"immutable"`
+
+	// DomainName is scope for which the field is valid/used.
+	DomainName string `json:"domainName"`
+
+	// SelectOptions is the list of select options for the field. Only used for select
+	// fields.
+	Selectoptions []CustomMetadataFieldSelectOption `json:"selectoptions"`
+
+	// Source indicates the origin of this field (eg. incident, gops-labels, github,
+	// etc)
+	Source string `json:"source"`
+
+	// ExternalID, if defined, stores the ID of this field in a third-party service
+	// (eg. gops-label id)
+	ExternalID string `json:"externalID"`
+
+	// Archived is whether this field is archived. Archived fields are not allowed to
+	// be used in the new incidents. But the historical data is still kept.
+	Archived bool `json:"archived"`
+}
+
+// CustomMetadataFieldSelectOption is a select option for a select field.
+type CustomMetadataFieldSelectOption struct {
+
+	// UUID is the UUID of the option.
+	UUID string `json:"uuid"`
+
+	// Value is the value of the select option.
+	Value string `json:"value"`
+
+	// Label is the label of the select option.
+	Label string `json:"label"`
+
+	// Color is the color of the select option.
+	Color string `json:"color"`
+
+	// Icon is the icon of the select option.
+	Icon string `json:"icon"`
+
+	// Description is the textual description of the option.
+	Description string `json:"description"`
+
+	// Source indicates the origin of this option (eg. incident, gops-labels, github,
+	// etc)
+	Source string `json:"source"`
+
+	// ExternalID, if defined, stores the ID of this option in a third-party service
+	// (eg. gops-label id)
+	ExternalID string `json:"externalID"`
+}
+
+// CustomMetadataFieldValue is a custom metadata field value.
+type CustomMetadataFieldValue struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+
+	// Value is the json encoded value of the field.
+	Value string `json:"value"`
+}
+
+// DeleteFieldRequest is the request struct for api DeleteField method.
+type DeleteFieldRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+}
+
+// DeleteFieldResponse is the response from the DeleteField method.
+type DeleteFieldResponse struct {
+}
+
+// DeleteFieldSelectOptionRequest is the request struct for DeleteFieldSelectOption
+// method.
+type DeleteFieldSelectOptionRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+
+	// SelectOptionUUID is the UUID of the field select option to delete.
+	SelectOptionUUID string `json:"selectOptionUUID"`
+}
+
+// DeleteFieldSelectOptionResponse is the response from the DeleteFieldSelectOption
+// method.
+type DeleteFieldSelectOptionResponse struct {
+}
+
+// DeleteRoleRequest is the request to delete a role.
+type DeleteRoleRequest struct {
+
+	// Role to be deleted to the organization
+	RoleID int `json:"roleID"`
+}
+
+// DeleteRoleResponse is the response to delete a role.
+type DeleteRoleResponse struct {
+}
+
+// DeleteTaskRequest is the request for the DeleteTask method.
 type DeleteTaskRequest struct {
 
 	// IncidentID is the ID of the Incident.
@@ -283,6 +661,7 @@ type DeleteTaskRequest struct {
 	TaskID string `json:"taskID"`
 }
 
+// DeleteTaskResponse is the response from the DeleteTask method.
 type DeleteTaskResponse struct {
 
 	// IncidentID is the ID of the incident these tasks relate to.
@@ -292,11 +671,146 @@ type DeleteTaskResponse struct {
 	TaskList TaskList `json:"taskList"`
 }
 
-// GetHomescreenVersionRequest is the request for the GetHomescreenVersion call.
+// DisableHookRequest is the request for the DisableHook method.
+type DisableHookRequest struct {
+
+	// IntegrationID is the identifier of the installed integration.
+	IntegrationID string `json:"integrationID"`
+
+	// EnabledHookID is the identifier of the hook to disable.
+	EnabledHookID string `json:"enabledHookID"`
+}
+
+// DisableHookResponse is the response for the DisableHook method.
+type DisableHookResponse struct {
+}
+
+// EnableHookRequest is the request for the EnableHook method.
+type EnableHookRequest struct {
+
+	// IntegrationID is the identifier of the installed integration.
+	IntegrationID string `json:"integrationID"`
+
+	// HookID is the identifier of the hook to enable.
+	HookID string `json:"hookID"`
+
+	// EventName is the name of event to wire the hook up to. The hook will be called
+	// when this event is fired.
+	EventName string `json:"eventName"`
+
+	// HookConfig is the configuration values to use when enabling the hook.
+	HookConfig HookConfig `json:"hookConfig"`
+
+	// IncidentFilter is the filter that determines if a hook with the 'incidentFilter'
+	// event will be triggered.
+	IncidentFilter string `json:"incidentFilter"`
+
+	// Sensitive is true if the hook run should be triggered when the incident is
+	// private. Ensures that hooks are not triggered for private incidents by default.
+	Sensitive bool `json:"sensitive"`
+}
+
+// EnableHookResponse is the response for the EnableHook method.
+type EnableHookResponse struct {
+
+	// EnabledHookID is the identifier of the enabled hook. This is distinct from the
+	// HookID.
+	EnabledHookID string `json:"enabledHookID"`
+}
+
+// Field represents a key/value pair, with additional metadata. Fields are used to
+// represent dynamic data structures.
+type Field struct {
+
+	// Key is the name of the field.
+	Key string `json:"key"`
+
+	// Type describes acceptable data for Value.
+	Type string `json:"type"`
+
+	// Description is the description of the field.
+	Description string `json:"description"`
+
+	// Value is the value of the field when running an action.
+	Value string `json:"value"`
+
+	// Secret is a marker that the field contains secret data and should not be visible
+	// to users.
+	Secret bool `json:"secret"`
+
+	// Checked is true if the bool field has been checked.
+	Checked bool `json:"checked"`
+
+	// Hidden indicates that a field should not be shown in the UI. It is not secret,
+	// just noisy, so hidden and out of the way.
+	Hidden bool `json:"hidden"`
+}
+
+// FieldValue represents a record with a field and its value.
+type FieldValue struct {
+
+	// Field is the field definition.
+	Field CustomMetadataField `json:"field"`
+
+	// Value is the json encoded value of the field to record. If empty, the field
+	// value will be set unset.
+	Value string `json:"value"`
+}
+
+// GetFieldRequest is the request struct for api GetField method.
+type GetFieldRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+}
+
+// GetFieldResponse is the response from the GetField method.
+type GetFieldResponse struct {
+
+	// Field is the requested field.
+	Field CustomMetadataField `json:"field"`
+}
+
+// GetFieldValuesRequest is the request struct for the GetFieldValues method.
+type GetFieldValuesRequest struct {
+
+	// TargetKind is the kind of the target to record the field value for.
+	TargetKind string `json:"targetKind"`
+
+	// TargetID is the ID of the target to record the field value for.
+	TargetID string `json:"targetID"`
+
+	// DomainName, if provided, will filter the results to the specified domain.
+	DomainName string `json:"domainName"`
+}
+
+// GetFieldValuesResponse is the response struct from the GetFieldValues method.
+type GetFieldValuesResponse struct {
+
+	// FieldValues is a list of field->value pairs.
+	FieldValues []FieldValue `json:"fieldValues"`
+}
+
+// GetFieldsRequest is the request struct for api GetFields method.
+type GetFieldsRequest struct {
+
+	// DomainName, if provided, will filter the results to the specified domain.
+	DomainName string `json:"domainName"`
+}
+
+// GetFieldsResponse is the response from the GetFields method.
+type GetFieldsResponse struct {
+
+	// Fields is the list of fields.
+	Fields []CustomMetadataField `json:"fields"`
+}
+
+// GetHomescreenVersionRequest is the request for the GetHomescreenVersion method.
 type GetHomescreenVersionRequest struct {
 }
 
-// GetHomescreenVersionResponse is the response for the GetHomescreenVersion call.
+// GetHomescreenVersionResponse is the response for the GetHomescreenVersion
+// method.
 type GetHomescreenVersionResponse struct {
 
 	// Version is the refresh value of the home screen. A higher value than last time
@@ -304,21 +818,51 @@ type GetHomescreenVersionResponse struct {
 	Version int `json:"version"`
 }
 
-// GetIncidentRequest is the request for the GetIncident call.
+// GetHookRunsRequest is the request for the GetHookRuns method.
+type GetHookRunsRequest struct {
+
+	// IncidentID is the identifier of the incident to get hook runs for.
+	IncidentID string `json:"incidentID"`
+}
+
+// GetHookRunsResponse is the response for the GetHookRuns method.
+type GetHookRunsResponse struct {
+
+	// HookRuns is a list of HookRuns for this Incident.
+	HookRuns []HookRun `json:"hookRuns"`
+}
+
+// GetIncidentMembershipRequest is the request for the GetIncidentMembership
+// method.
+type GetIncidentMembershipRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+}
+
+// GetIncidentMembershipResponse is the response for the GetIncidentMembership
+// method.
+type GetIncidentMembershipResponse struct {
+
+	// IncidentMembership is the list of people involved in an incident
+	Assignments []Assignment `json:"assignments"`
+}
+
+// GetIncidentRequest is the request for the GetIncident method.
 type GetIncidentRequest struct {
 
 	// IncidentID is the identifier.
 	IncidentID string `json:"incidentID"`
 }
 
-// GetIncidentResponse is the response for the GetIncident call.
+// GetIncidentResponse is the response for the GetIncident method.
 type GetIncidentResponse struct {
 
 	// Incident is the Incident.
 	Incident Incident `json:"incident"`
 }
 
-// GetIncidentVersionRequest is the request for the GetIncidentVersion call.
+// GetIncidentVersionRequest is the request for the GetIncidentVersion method.
 type GetIncidentVersionRequest struct {
 
 	// IncidentID is the identifier of the Incident. A higher value than last time
@@ -326,11 +870,110 @@ type GetIncidentVersionRequest struct {
 	IncidentID string `json:"incidentID"`
 }
 
-// GetIncidentVersionResponse is the response for the GetIncidentVersion call.
+// GetIncidentVersionResponse is the response for the GetIncidentVersion method.
 type GetIncidentVersionResponse struct {
 
 	// Version is the refresh value of the Incident.
 	Version int `json:"version"`
+}
+
+// GetLabelsRequest is the request for the GetLabels method.
+type GetLabelsRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+}
+
+// GetLabelsResponse is the response from the GetLabels method.
+type GetLabelsResponse struct {
+
+	// Labels is a list of labels
+	Labels []IncidentKeyValueLabel `json:"labels"`
+}
+
+// GetRolesRequest is the request to get all roles.
+type GetRolesRequest struct {
+}
+
+// GetRolesResponse is the response to get all roles.
+type GetRolesResponse struct {
+
+	// Roles is the list of roles.
+	Roles []Role `json:"roles"`
+}
+
+// GetUserRequest is the request for GetUser.
+type GetUserRequest struct {
+
+	// UserID is the user ID to find the user for. All ids are in the format
+	// "provider:user-id" which allows you to refer to users from different providers.
+	// "grafana-incident:<id>" is preferred, but all are accepted.
+	UserID string `json:"userID"`
+}
+
+// GetUserResponse contains the information about a user.
+type GetUserResponse struct {
+
+	// User is the user
+	User User `json:"user"`
+}
+
+// HookConfig holds configuration fields for a Hook.
+type HookConfig struct {
+
+	// Fields is a list of hook specific key/value pairs.
+	Fields []Field `json:"fields"`
+}
+
+// HookMetadata contains metadata about the Run and Update of a Hook.
+type HookMetadata struct {
+
+	// Title is a title that relates to this Hook's run.
+	Title string `json:"title"`
+
+	// Explanation is a brief description about what action was taken.
+	Explanation string `json:"explanation"`
+
+	// URL is an optional URL to a place users can go for more information.
+	URL string `json:"url"`
+}
+
+// HookRun describes the result of executing a Hook.
+type HookRun struct {
+
+	// IntegrationID is the ID of the installed Integration that the Hook belongs to.
+	IntegrationID string `json:"integrationID"`
+
+	// HookID is the ID of the Hook that was run.
+	HookID string `json:"hookID"`
+
+	// EnabledHookID is the ID of the enabled hook instance.
+	EnabledHookID string `json:"enabledHookID"`
+
+	// LastRun is the time the hook was last run.
+	LastRun string `json:"lastRun"`
+
+	// LastUpdate is the time the hook was last updated.
+	LastUpdate string `json:"lastUpdate"`
+
+	// Metadata holds Hook specific key/value pairs.
+	Metadata HookMetadata `json:"metadata"`
+
+	// EventName is the name of the event that triggered the Hook to run.
+	EventName string `json:"eventName"`
+
+	// EventKind gives more detail about the type of event.
+	EventKind string `json:"eventKind"`
+
+	// UpdateStatus is the status of the Hook update.
+	UpdateStatus string `json:"updateStatus"`
+
+	// UpdateError is an error string to show the end-user for when UpdateStatus is
+	// "failed".
+	UpdateError string `json:"updateError"`
+
+	// Status is the status of the Hook run.
+	Status string `json:"status"`
 }
 
 // Incident is a single incident.
@@ -377,8 +1020,8 @@ type Incident struct {
 	// OverviewURL is the URL to the overview page for the Incident.
 	OverviewURL string `json:"overviewURL"`
 
-	// Roles describes the individuals involved in the Incident.
-	Roles []IncidentRole `json:"roles"`
+	// Assignments describes the individuals involved in the Incident.
+	IncidentMembership IncidentMembership `json:"incidentMembership"`
 
 	// TaskList is the list of tasks associated with the Incident.
 	TaskList TaskList `json:"taskList"`
@@ -398,8 +1041,34 @@ type Incident struct {
 	IncidentEnd string `json:"incidentEnd"`
 }
 
+// IncidentKeyValueLabel is a key:value label associated with an Incident.
+type IncidentKeyValueLabel struct {
+
+	// Key is the label key.
+	Key string `json:"key"`
+
+	// KeyUUID is the UUID of the label key.
+	KeyUUID string `json:"keyUUID"`
+
+	// ValueUUID is the UUID of the label value.
+	ValueUUID string `json:"valueUUID"`
+
+	// Value is the value of the label.
+	Value string `json:"value"`
+
+	// Description is a short explanation of the label.
+	Description string `json:"description"`
+
+	// Color is the CSS hex color of the label. Labels show up in both light and dark
+	// modes, and this should be taken into consideration when selecting a color.
+	ColorHex string `json:"colorHex"`
+}
+
 // IncidentLabel is a label associated with an Incident.
 type IncidentLabel struct {
+
+	// Key is the label key. If not provided, we'll default to 'tags'.
+	Key string `json:"key"`
 
 	// Label is the text of the label.
 	Label string `json:"label"`
@@ -412,29 +1081,124 @@ type IncidentLabel struct {
 	ColorHex string `json:"colorHex"`
 }
 
-// IncidentRole represents a person involved in an Incident.
-type IncidentRole struct {
+// IncidentMembership represents a list of people involved in an Incident.
+type IncidentMembership struct {
 
-	// Role is the unique name that describes the activity of the person.
-	Role string `json:"role"`
+	// List of all assignments done for that incident
+	Assignments []Assignment `json:"assignments"`
 
-	// Description is a short explanation of the role.
+	// Total of assignments including hidden roles in the incident
+	TotalAssignments int `json:"totalAssignments"`
+
+	// Total of participants in the incident excluding the assigned roles
+	TotalParticipants int `json:"totalParticipants"`
+}
+
+// IncidentMembershipPreview is a summary of the people involved in an Incident.
+type IncidentMembershipPreview struct {
+
+	// ImportantAssignments is a list of all assignments done for that incident that
+	// are marked as important.
+	ImportantAssignments []AssignmentPreview `json:"importantAssignments"`
+
+	// Total of assignments including hidden roles in the incident
+	TotalAssignments int `json:"totalAssignments"`
+
+	// Total of hidden roles (like observers) related with that incident
+	TotalParticipants int `json:"totalParticipants"`
+}
+
+// IncidentPreview is a minimal preview of a full Incident (omitting structured
+// children) meant for lightweight listings or getting basic metadata.
+type IncidentPreview struct {
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// Severity expresses how bad the incident is.
+	SeverityID string `json:"severityID"`
+
+	// SeverityLabel is the label of the severity.
+	SeverityLabel string `json:"severityLabel"`
+
+	// IncidentType indicates the kind of incident to create.
+	IncidentType string `json:"incidentType"`
+
+	// Labels is a list of strings associated with this Incident.
+	Labels []IncidentLabel `json:"labels"`
+
+	// IsDrill indicates if the incident is a drill or not. Incidents that are drills
+	// do not show up in the dashboards, and may behave subtly differently in other
+	// ways too. For example, during drills, more help might be offered to users.
+	IsDrill bool `json:"isDrill"`
+
+	// CreatedTime is when the Incident was created. The string value format should
+	// follow RFC 3339.
+	CreatedTime string `json:"createdTime"`
+
+	// ModifiedTime is when the Incident was last modified. The string value format
+	// should follow RFC 3339.
+	ModifiedTime string `json:"modifiedTime"`
+
+	// ClosedTime is when the Incident was closed. The string value format should
+	// follow RFC 3339.
+	ClosedTime string `json:"closedTime"`
+
+	// CreatedByUser is the UserPreview that created the Incident.
+	CreatedByUser UserPreview `json:"createdByUser"`
+
+	// Title is the high level description of the Incident.
+	Title string `json:"title"`
+
+	// Description is a brief description of the Incident.
 	Description string `json:"description"`
 
-	// MaxPeople is the maximum number of people that can be assigned to this role.
-	// If zero, then there is no limit. Usually it's 0 or 1.
-	MaxPeople int `json:"maxPeople"`
+	// Summary is as short recap of the incident.
+	Summary string `json:"summary"`
 
-	// Mandatory indicates if a Role is mandatory or not. Users will be bugged to fill
-	// Mandatory roles.
-	Mandatory bool `json:"mandatory"`
+	// HeroImagePath is the path to the hero image for this Incident.
+	HeroImagePath string `json:"heroImagePath"`
 
-	// ImportantRole indicates if a role is important or not. Users in an important
-	// role cannot be assigned to a non-important one.
-	Important bool `json:"important"`
+	// Status is the current status of the Incident.
+	Status string `json:"status"`
 
-	// User is the person who holds this role.
-	User UserPreview `json:"user"`
+	// Slug is a URL friendly path segment for the Incident.
+	Slug string `json:"slug"`
+
+	// IncidentStart is when the Incident began. The string value format should follow
+	// RFC 3339.
+	IncidentStart string `json:"incidentStart"`
+
+	// IncidentEnd is when the Incident ended. The string value format should follow
+	// RFC 3339.
+	IncidentEnd string `json:"incidentEnd"`
+
+	// FieldValues is the list of fields associated with the Incident and their values.
+	FieldValues []CustomMetadataFieldValue `json:"fieldValues"`
+
+	// IncidentMembershipPreview is a summary of the people involved in the Incident.
+	IncidentMembershipPreview IncidentMembershipPreview `json:"incidentMembershipPreview"`
+
+	// Version is the times that the incident has been updated
+	Version int `json:"version"`
+}
+
+// IncidentPreviewsQuery describes the query to make.
+type IncidentPreviewsQuery struct {
+
+	// Limit is the number of Incidents to return.
+	Limit int `json:"limit"`
+
+	// OrderDirection is the direction to order the results.
+	OrderDirection string `json:"orderDirection"`
+
+	// OrderField is the field on which to order the results. If empty, `createdTime`
+	// will be used.
+	OrderField string `json:"orderField"`
+
+	// QueryString is the query string to search for. If provided, the query will be
+	// filtered by the query string and the other query parameters will be ignored.
+	QueryString string `json:"queryString"`
 }
 
 // IncidentsQuery is the query for the QueryIncidentsRequest.
@@ -516,7 +1280,7 @@ type OutgoingWebhookPayload struct {
 	Incident *Incident `json:"incident"`
 }
 
-// QueryActivityRequest is the request for the QueryActivity operation.
+// QueryActivityRequest is the request for the QueryActivity method.
 type QueryActivityRequest struct {
 
 	// Query describes the query to make.
@@ -541,7 +1305,40 @@ type QueryActivityResponse struct {
 	Cursor Cursor `json:"cursor"`
 }
 
-// QueryIncidentsRequest is the request for the QueryIncidents call.
+// QueryIncidentPreviews is the request for the QueryIncidentPreviews method.
+type QueryIncidentPreviewsRequest struct {
+
+	// Query describes the query to make.
+	Query IncidentPreviewsQuery `json:"query"`
+
+	// Cursor is used to page through results. Empty for the first page. For subsequent
+	// pages, use previously returned Cursor values.
+	Cursor Cursor `json:"cursor"`
+
+	// IncludeCustomFieldValues if true will include custom field values in the
+	// response.
+	IncludeCustomFieldValues bool `json:"includeCustomFieldValues"`
+
+	// IncludeMembershipPreview if true will include membership previews in the
+	// response.
+	IncludeMembershipPreview bool `json:"includeMembershipPreview"`
+}
+
+// QueryIncidentPreviewsResponse is the response for the QueryIncidentPreviews
+// method.
+type QueryIncidentPreviewsResponse struct {
+
+	// IncidentPreviews is a list of Incident Previews.
+	IncidentPreviews []IncidentPreview `json:"incidentPreviews"`
+
+	// Query is the query that was used to generate this response.
+	Query IncidentPreviewsQuery `json:"query"`
+
+	// Cursor should be passed back to get the next page of results.
+	Cursor Cursor `json:"cursor"`
+}
+
+// QueryIncidentsRequest is the request for the QueryIncidents method.
 type QueryIncidentsRequest struct {
 
 	// Query describes the query to make.
@@ -552,7 +1349,7 @@ type QueryIncidentsRequest struct {
 	Cursor Cursor `json:"cursor"`
 }
 
-// QueryIncidentsResponse is the response for the QueryIncidents call.
+// QueryIncidentsResponse is the response for the QueryIncidents method.
 type QueryIncidentsResponse struct {
 
 	// Incidents is a list of Incidents.
@@ -565,7 +1362,31 @@ type QueryIncidentsResponse struct {
 	Cursor Cursor `json:"cursor"`
 }
 
-// RemoveActivityRequest is the request for the RemoveActivity operation.
+// QueryUsersRequest is the request for getting a list of users.
+type QueryUsersRequest struct {
+
+	// Query describes the query to make
+	Query UsersQuery `json:"query"`
+
+	// Cursor is used to page through results. Empty for the first page. For subsequent
+	// pages, use previously returned Cursor values.
+	Cursor Cursor `json:"cursor"`
+}
+
+// QueryUsersResponse is the response from QueryUsers.
+type QueryUsersResponse struct {
+
+	// Users is a list of Users.
+	Users []User `json:"users"`
+
+	// Query is the query that was used to generate this response.
+	Query UsersQuery `json:"query"`
+
+	// Cursor should be passed back to get the next page of results.
+	Cursor Cursor `json:"cursor"`
+}
+
+// RemoveActivityRequest is the request for the RemoveActivity method.
 type RemoveActivityRequest struct {
 
 	// IncidentID is the identifier.
@@ -575,14 +1396,14 @@ type RemoveActivityRequest struct {
 	ActivityItemID string `json:"activityItemID"`
 }
 
-// RemoveActivityResponse is the response from the RemoveActivity operation.
+// RemoveActivityResponse is the response from the RemoveActivity method.
 type RemoveActivityResponse struct {
 
 	// ActivityItem is the updated ActivityItem.
 	ActivityItem ActivityItem `json:"activityItem"`
 }
 
-// RemoveLabelRequest is the request for the RemoveLabel call.
+// RemoveLabelRequest is the request for the RemoveLabel method.
 type RemoveLabelRequest struct {
 
 	// IncidentID is the identifier of the Incident.
@@ -592,11 +1413,43 @@ type RemoveLabelRequest struct {
 	Label string `json:"label"`
 }
 
-// RemoveLabelResponse is the response for the RemoveLabel call.
+// RemoveLabelResponse is the response for the RemoveLabel method.
 type RemoveLabelResponse struct {
 
 	// Incident is the Incident that was just modified.
 	Incident Incident `json:"incident"`
+}
+
+// Role represents a role that will be used to assign people in the incident.
+type Role struct {
+
+	// RoleID is the unique ID of this role.
+	RoleID int `json:"roleID"`
+
+	// OrgID is the unique ID of the organization this role belongs to.
+	OrgID string `json:"orgID"`
+
+	// Name is the name of the role.
+	Name string `json:"name"`
+
+	// Description is the description of the role.
+	Description string `json:"description"`
+
+	// Important is whether this role is important.
+	Important bool `json:"important"`
+
+	// Mandatory is whether this role is mandatory.
+	Mandatory bool `json:"mandatory"`
+
+	// Archived is whether this role is archived. Archived roles are not allowed to be
+	// assigned to people in the new incidents. But the historical data is still kept.
+	Archived bool `json:"archived"`
+
+	// CreatedAt is the time this role was created at.
+	CreatedAt string `json:"createdAt"`
+
+	// UpdatedAt is the time this role was updated at.
+	UpdatedAt string `json:"updatedAt"`
 }
 
 // Task is an individual task that somebody will do to resolve an Incident.
@@ -641,7 +1494,69 @@ type TaskList struct {
 	DoneCount int `json:"doneCount"`
 }
 
-// UnassignRoleRequest is the request for the UnassignRole call.
+// UnarchiveFieldRequest is the request struct for api UnarchiveField method.
+type UnarchiveFieldRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+}
+
+// UnarchiveFieldResponse is the response from the UnarchiveField method.
+type UnarchiveFieldResponse struct {
+}
+
+// UnarchiveRoleRequest is the request to unarchive a role.
+type UnarchiveRoleRequest struct {
+
+	// Role to be unarchived to the organization
+	RoleID int `json:"roleID"`
+}
+
+// UnarchiveRoleResponse is the response to unarchive a role.
+type UnarchiveRoleResponse struct {
+}
+
+// UnassignLabelByUUIDRequest is the request for the UnassignLabelByUUID method.
+type UnassignLabelByUUIDRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// KeyUUID is the label key uuid.
+	KeyUUID string `json:"keyUUID"`
+
+	// ValueUUID is the UUID of the label value.
+	ValueUUID string `json:"valueUUID"`
+}
+
+// UnassignLabelByUUIDResponse is the response from the UnassignLabelByUUID method.
+type UnassignLabelByUUIDResponse struct {
+
+	// Labels is a list of labels
+	Labels []IncidentKeyValueLabel `json:"labels"`
+}
+
+// UnassignLabelRequest is the request for the UnassignLabel method.
+type UnassignLabelRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+
+	// Key is the label key.
+	Key string `json:"key"`
+
+	// Value is the value of the label.
+	Value string `json:"value"`
+}
+
+// UnassignLabelResponse is the response from the UnassignLabel method.
+type UnassignLabelResponse struct {
+
+	// Labels is a list of labels
+	Labels []IncidentKeyValueLabel `json:"labels"`
+}
+
+// UnassignRoleRequest is the request for the UnassignRole method.
 type UnassignRoleRequest struct {
 
 	// IncidentID is the identifier.
@@ -654,7 +1569,7 @@ type UnassignRoleRequest struct {
 	Role string `json:"role"`
 }
 
-// UnassignRoleResponse is the response for the UnassignRole call.
+// UnassignRoleResponse is the response for the UnassignRole method.
 type UnassignRoleResponse struct {
 
 	// Incident is the Incident that was just updated.
@@ -665,7 +1580,7 @@ type UnassignRoleResponse struct {
 	DidChange bool `json:"didChange"`
 }
 
-// UpdateActivityBodyRequest is the request for the UpdateActivityBody operation.
+// UpdateActivityBodyRequest is the request for the UpdateActivityBody method.
 type UpdateActivityBodyRequest struct {
 
 	// IncidentID is the identifier.
@@ -678,8 +1593,7 @@ type UpdateActivityBodyRequest struct {
 	Body string `json:"body"`
 }
 
-// UpdateActivityBodyResponse is the response from the UpdateActivityBody
-// operation.
+// UpdateActivityBodyResponse is the response from the UpdateActivityBody method.
 type UpdateActivityBodyResponse struct {
 
 	// ActivityItem is the updated ActivityItem.
@@ -687,7 +1601,7 @@ type UpdateActivityBodyResponse struct {
 }
 
 // UpdateActivityEventTimeRequest is the request for the UpdateActivityEventTime
-// operation.
+// method.
 type UpdateActivityEventTimeRequest struct {
 
 	// IncidentID is the identifier.
@@ -702,15 +1616,108 @@ type UpdateActivityEventTimeRequest struct {
 }
 
 // UpdateActivityEventTimeResponse is the response from the UpdateActivityEventTime
-// operation.
+// method.
 type UpdateActivityEventTimeResponse struct {
 
 	// ActivityItem is the updated ActivityItem.
 	ActivityItem ActivityItem `json:"activityItem"`
 }
 
+// UpdateActivityRelevanceRequest is the request for the UpdateActivityRelevance
+// method.
+type UpdateActivityRelevanceRequest struct {
+
+	// IncidentID is the identifier.
+	IncidentID string `json:"incidentID"`
+
+	// ActivityItemID is the unique identifier of the ActivityItem.
+	ActivityItemID string `json:"activityItemID"`
+
+	// Relevance is the preferred relevance of the activity item. if set to 'automatic'
+	// (the default), the relevance will be guessed automatically.
+	Relevance string `json:"relevance"`
+}
+
+// UpdateActivityRelevanceResponse is the response from the UpdateActivityRelevance
+// method.
+type UpdateActivityRelevanceResponse struct {
+
+	// ActivityItem is the updated ActivityItem.
+	ActivityItem ActivityItem `json:"activityItem"`
+}
+
+// UpdateFieldRequest is the request struct for api UpdateField method.
+type UpdateFieldRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+
+	// Name is the name of the field.
+	Name string `json:"name"`
+
+	// Slug is the slug of the field. Used for searching and referencing the field as a
+	// metric.
+	Slug string `json:"slug"`
+
+	// Color is the field color.
+	Color string `json:"color"`
+
+	// Icon is the field icon.
+	Icon string `json:"icon"`
+
+	// Description is the description of the field.
+	Description string `json:"description"`
+
+	// Required is whether this field is required.
+	Required bool `json:"required"`
+
+	// DomainName is single-select for which a field is valid/used.
+	DomainName string `json:"domainName"`
+
+	// Immutable indicates if the field can by modified by the user.
+	Immutable bool `json:"immutable"`
+}
+
+// UpdateFieldResponse is the response from the UpdateField method.
+type UpdateFieldResponse struct {
+
+	// Field is the field that was updated.
+	Field CustomMetadataField `json:"field"`
+}
+
+// UpdateFieldSelectOptionRequest is the request struct for UpdateFieldSelectOption
+// method.
+type UpdateFieldSelectOptionRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+
+	// SelectOptionUUID is the UUID of the field select option to delete.
+	SelectOptionUUID string `json:"selectOptionUUID"`
+
+	// Value is the value of the select option.
+	Value string `json:"value"`
+
+	// Label is the label of the select option.
+	Label string `json:"label"`
+
+	// Color is the color of the select option.
+	Color string `json:"color"`
+
+	// Icon is the icon of the select option.
+	Icon string `json:"icon"`
+
+	// Description is the textual description of the option.
+	Description string `json:"description"`
+}
+
+// UpdateFieldSelectOptionResponse is the response from the UpdateFieldSelectOption
+// method.
+type UpdateFieldSelectOptionResponse struct {
+}
+
 // UpdateIncidentEventTimeRequest is the request for the UpdateIncidentEventTime
-// call.
+// method.
 type UpdateIncidentEventTimeRequest struct {
 
 	// IncidentID is the identifier of the Incident.
@@ -720,13 +1727,21 @@ type UpdateIncidentEventTimeRequest struct {
 	// format should follow RFC 3339.
 	EventTime string `json:"eventTime"`
 
-	// ActivityItemKind is either the start or end of the incident.
+	// ActivityItemKind is either the incidentEnd or incidentStart time. deprecated.
+	// use EventName instead, ActivityItemKind will be removed soon.
 	ActivityItemKind string `json:"activityItemKind"`
+
+	// EventName is either the incidentEnd or incidentStart time.
+	EventName string `json:"eventName"`
 }
 
+// UpdateIncidentEventTimeResponse is the response for the UpdateIncidentEventTime
+// method.
 type UpdateIncidentEventTimeResponse struct {
 }
 
+// UpdateIncidentIsDrillRequest is the request for the UpdateIncidentIsDrill
+// method.
 type UpdateIncidentIsDrillRequest struct {
 
 	// IncidentID is the identifier of the Incident.
@@ -736,13 +1751,29 @@ type UpdateIncidentIsDrillRequest struct {
 	IsDrill bool `json:"isDrill"`
 }
 
+// UpdateIncidentIsDrillResponse is the response for the UpdateIncidentIsDrill
+// method.
 type UpdateIncidentIsDrillResponse struct {
 
 	// Incident is the Incident that was just modified.
 	Incident Incident `json:"incident"`
 }
 
-// UpdateSeverityRequest is the request for the UpdateSeverity call.
+// UpdateRoleRequest is the request to update a role.
+type UpdateRoleRequest struct {
+
+	// Role to be updated to the organization
+	Role Role `json:"role"`
+}
+
+// UpdateRoleResponse is the response to update a role.
+type UpdateRoleResponse struct {
+
+	// Role is the newly updated role.
+	Role Role `json:"role"`
+}
+
+// UpdateSeverityRequest is the request for the UpdateSeverity method.
 type UpdateSeverityRequest struct {
 
 	// IncidentID is the identifier of the Incident.
@@ -752,14 +1783,14 @@ type UpdateSeverityRequest struct {
 	Severity string `json:"severity"`
 }
 
-// UpdateSeverityResponse is the response for the UpdateSeverity call.
+// UpdateSeverityResponse is the response for the UpdateSeverity method.
 type UpdateSeverityResponse struct {
 
 	// Incident is the Incident that was just modified.
 	Incident Incident `json:"incident"`
 }
 
-// UpdateStatusRequest is the request for the UpdateStatus call.
+// UpdateStatusRequest is the request for the UpdateStatus method.
 type UpdateStatusRequest struct {
 
 	// IncidentID is the identifier of the Incident.
@@ -769,13 +1800,14 @@ type UpdateStatusRequest struct {
 	Status string `json:"status"`
 }
 
-// UpdateStatusResponse is the response for the UpdateStatus call.
+// UpdateStatusResponse is the response for the UpdateStatus method.
 type UpdateStatusResponse struct {
 
 	// Incident is the Incident that was just modified.
 	Incident Incident `json:"incident"`
 }
 
+// UpdateTaskStatusRequest is the request for the UpdateTaskStatus method.
 type UpdateTaskStatusRequest struct {
 
 	// IncidentID is the ID of the Incident to add the Task to.
@@ -788,6 +1820,7 @@ type UpdateTaskStatusRequest struct {
 	Status string `json:"status"`
 }
 
+// UpdateTaskStatusResponse is the response from the UpdateTaskStatus method.
 type UpdateTaskStatusResponse struct {
 
 	// IncidentID is the ID of the incident these tasks relate to.
@@ -800,6 +1833,7 @@ type UpdateTaskStatusResponse struct {
 	TaskList TaskList `json:"taskList"`
 }
 
+// UpdateTaskTextRequest is the request for the UpdateTaskText method.
 type UpdateTaskTextRequest struct {
 
 	// IncidentID is the ID of the Incident to add the Task to.
@@ -812,6 +1846,7 @@ type UpdateTaskTextRequest struct {
 	Text string `json:"text"`
 }
 
+// UpdateTaskTextResponse is the response from the UpdateTaskText method.
 type UpdateTaskTextResponse struct {
 
 	// IncidentID is the ID of the incident these tasks relate to.
@@ -824,6 +1859,7 @@ type UpdateTaskTextResponse struct {
 	TaskList TaskList `json:"taskList"`
 }
 
+// UpdateTaskUserRequest is the request for the UpdateTaskUser method.
 type UpdateTaskUserRequest struct {
 
 	// IncidentID is the ID of the Incident to add the Task to.
@@ -836,6 +1872,7 @@ type UpdateTaskUserRequest struct {
 	UserID string `json:"userID"`
 }
 
+// UpdateTaskUserResponse is the response from the UpdateTaskUser method.
 type UpdateTaskUserResponse struct {
 
 	// IncidentID is the ID of the incident these tasks relate to.
@@ -848,7 +1885,7 @@ type UpdateTaskUserResponse struct {
 	TaskList TaskList `json:"taskList"`
 }
 
-// UpdateTitleRequest is the request for the UpdateTitle call.
+// UpdateTitleRequest is the request for the UpdateTitle method.
 type UpdateTitleRequest struct {
 
 	// IncidentID is the identifier of the Incident.
@@ -858,11 +1895,53 @@ type UpdateTitleRequest struct {
 	Title string `json:"title"`
 }
 
-// UpdateTitleResponse is the response for the UpdateTitle call.
+// UpdateTitleResponse is the response for the UpdateTitle method.
 type UpdateTitleResponse struct {
 
 	// Incident is the Incident that was just modified.
 	Incident Incident `json:"incident"`
+}
+
+// User contains the details of a person.
+type User struct {
+
+	// UserID is the identifier. It is in the format "provider:user-id" which
+	// allows you to refer to users from different providers. Sometimes, the same
+	// user is represented by multiple identifiers. You may always use this field
+	// whenever you need to refer to a user, the server will resolve them for you.
+	// "grafana-incident:{id}" is preferred.
+	UserID string `json:"userID"`
+
+	// InternalUserID is the internal user ID as stored in the database.
+	InternalUserID string `json:"internalUserID"`
+
+	// Email is the user's email address.
+	Email string `json:"email"`
+
+	// ModifiedTime is when this user was last modified. The string value format should
+	// follow RFC 3339.
+	ModifiedTime string `json:"modifiedTime"`
+
+	// Name is the user full name.
+	Name string `json:"name"`
+
+	// PhotoURL is the user's photo URL.
+	PhotoURL string `json:"photoURL"`
+
+	// GrafanaUserID is the Grafana user ID.
+	GrafanaUserID string `json:"grafanaUserID"`
+
+	// GrafanaLogin is the Grafana login.
+	GrafanaLogin string `json:"grafanaLogin"`
+
+	// SlackUserID is the Slack user ID.
+	SlackUserID string `json:"slackUserID"`
+
+	// SlackTeamID is the Slack organization ID.
+	SlackTeamID string `json:"slackTeamID"`
+
+	// MsTeamsUserID is the MS Teams organization ID.
+	MsTeamsUserID string `json:"msTeamsUserID"`
 }
 
 // UserPreview is a user involved in an Incident.
@@ -876,6 +1955,13 @@ type UserPreview struct {
 
 	// PhotoURL is the URL to the profile picture of the user.
 	PhotoURL string `json:"photoURL"`
+}
+
+// UsersQuery is the request for getting a list of users.
+type UsersQuery struct {
+
+	// Limit is the max number of users to return.
+	Limit int `json:"limit"`
 }
 
 // ActivityService provides access to incident activity. You can post notes to the
@@ -908,8 +1994,10 @@ func (s *ActivityService) AddActivity(ctx context.Context, r AddActivityRequest)
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.AddActivity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -947,7 +2035,7 @@ func (s *ActivityService) AddActivity(ctx context.Context, r AddActivityRequest)
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddActivityResponse, nil
 }
@@ -968,8 +2056,10 @@ func (s *ActivityService) QueryActivity(ctx context.Context, r QueryActivityRequ
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.QueryActivity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1007,7 +2097,7 @@ func (s *ActivityService) QueryActivity(ctx context.Context, r QueryActivityRequ
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.QueryActivityResponse, nil
 }
@@ -1028,8 +2118,10 @@ func (s *ActivityService) RemoveActivity(ctx context.Context, r RemoveActivityRe
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.RemoveActivity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1067,7 +2159,7 @@ func (s *ActivityService) RemoveActivity(ctx context.Context, r RemoveActivityRe
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.RemoveActivityResponse, nil
 }
@@ -1088,8 +2180,10 @@ func (s *ActivityService) UpdateActivityBody(ctx context.Context, r UpdateActivi
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1127,7 +2221,7 @@ func (s *ActivityService) UpdateActivityBody(ctx context.Context, r UpdateActivi
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateActivityBodyResponse, nil
 }
@@ -1148,8 +2242,10 @@ func (s *ActivityService) UpdateActivityEventTime(ctx context.Context, r UpdateA
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1187,9 +2283,891 @@ func (s *ActivityService) UpdateActivityEventTime(ctx context.Context, r UpdateA
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateActivityEventTimeResponse, nil
+}
+
+// UpdateActivityRelevance sets the relevance of an activity item.
+func (s *ActivityService) UpdateActivityRelevance(ctx context.Context, r UpdateActivityRelevanceRequest) (*UpdateActivityRelevanceResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateActivityRelevance()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: marshal UpdateActivityRelevanceRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "ActivityService.UpdateActivityRelevance"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateActivityRelevanceResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UpdateActivityRelevanceResponse, nil
+}
+
+// FieldsService provides access to the Fields API, responsible for managing custom
+// metadata fields.
+// Get one by calling NewFieldsService.
+type FieldsService struct {
+	client *Client
+}
+
+// NewFieldsService gets a new FieldsService.
+func NewFieldsService(client *Client) *FieldsService {
+	return &FieldsService{
+		client: client,
+	}
+}
+
+// AddField adds a new field to the org.
+func (s *FieldsService) AddField(ctx context.Context, r AddFieldRequest) (*AddFieldResponse, error) {
+	if s.client.stubmode {
+		return s.stubAddField()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddField: marshal AddFieldRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.AddField"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddField: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddField: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AddFieldResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.AddField: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddField: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.AddField: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.AddFieldResponse, nil
+}
+
+// AddFieldSelectOption adds a field select option.
+func (s *FieldsService) AddFieldSelectOption(ctx context.Context, r AddFieldSelectOptionRequest) (*AddFieldSelectOptionResponse, error) {
+	if s.client.stubmode {
+		return s.stubAddFieldSelectOption()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: marshal AddFieldSelectOptionRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.AddFieldSelectOption"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AddFieldSelectOptionResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.AddFieldSelectOptionResponse, nil
+}
+
+// AddLabelKey creates a field with the label domain.
+func (s *FieldsService) AddLabelKey(ctx context.Context, r AddLabelKeyRequest) (*AddLabelKeyResponse, error) {
+	if s.client.stubmode {
+		return s.stubAddLabelKey()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelKey: marshal AddLabelKeyRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.AddLabelKey"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelKey: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelKey: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AddLabelKeyResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.AddLabelKey: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelKey: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.AddLabelKey: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.AddLabelKeyResponse, nil
+}
+
+// AddLabelValue adds a label value to a given label key.
+func (s *FieldsService) AddLabelValue(ctx context.Context, r AddLabelValueRequest) (*AddLabelValueResponse, error) {
+	if s.client.stubmode {
+		return s.stubAddLabelValue()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelValue: marshal AddLabelValueRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.AddLabelValue"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelValue: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelValue: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AddLabelValueResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.AddLabelValue: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelValue: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.AddLabelValue: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.AddLabelValueResponse, nil
+}
+
+// ArchiveField archives a field.
+func (s *FieldsService) ArchiveField(ctx context.Context, r ArchiveFieldRequest) (*ArchiveFieldResponse, error) {
+	if s.client.stubmode {
+		return s.stubArchiveField()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.ArchiveField: marshal ArchiveFieldRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.ArchiveField"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.ArchiveField: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.ArchiveField: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		ArchiveFieldResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.ArchiveField: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.ArchiveField: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.ArchiveField: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.ArchiveFieldResponse, nil
+}
+
+// DeleteField deletes a field.
+func (s *FieldsService) DeleteField(ctx context.Context, r DeleteFieldRequest) (*DeleteFieldResponse, error) {
+	if s.client.stubmode {
+		return s.stubDeleteField()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteField: marshal DeleteFieldRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.DeleteField"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteField: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteField: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		DeleteFieldResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.DeleteField: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteField: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.DeleteField: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.DeleteFieldResponse, nil
+}
+
+// DeleteFieldSelectOption deletes a field select option.
+func (s *FieldsService) DeleteFieldSelectOption(ctx context.Context, r DeleteFieldSelectOptionRequest) (*DeleteFieldSelectOptionResponse, error) {
+	if s.client.stubmode {
+		return s.stubDeleteFieldSelectOption()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: marshal DeleteFieldSelectOptionRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.DeleteFieldSelectOption"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		DeleteFieldSelectOptionResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.DeleteFieldSelectOptionResponse, nil
+}
+
+// GetField returns fields in the org.
+func (s *FieldsService) GetField(ctx context.Context, r GetFieldRequest) (*GetFieldResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetField()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetField: marshal GetFieldRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.GetField"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetField: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetField: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetFieldResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.GetField: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetField: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.GetField: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetFieldResponse, nil
+}
+
+// GetFieldValues gets the key->value linked to a target.
+func (s *FieldsService) GetFieldValues(ctx context.Context, r GetFieldValuesRequest) (*GetFieldValuesResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetFieldValues()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFieldValues: marshal GetFieldValuesRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.GetFieldValues"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFieldValues: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFieldValues: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetFieldValuesResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.GetFieldValues: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFieldValues: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.GetFieldValues: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetFieldValuesResponse, nil
+}
+
+// GetFields returns a list of all custom fields in the org.
+func (s *FieldsService) GetFields(ctx context.Context, r GetFieldsRequest) (*GetFieldsResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetFields()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFields: marshal GetFieldsRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.GetFields"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFields: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFields: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetFieldsResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.GetFields: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFields: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.GetFields: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetFieldsResponse, nil
+}
+
+// UnarchiveField unarchives a field.
+func (s *FieldsService) UnarchiveField(ctx context.Context, r UnarchiveFieldRequest) (*UnarchiveFieldResponse, error) {
+	if s.client.stubmode {
+		return s.stubUnarchiveField()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UnarchiveField: marshal UnarchiveFieldRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.UnarchiveField"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UnarchiveField: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UnarchiveField: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UnarchiveFieldResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.UnarchiveField: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UnarchiveField: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.UnarchiveField: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UnarchiveFieldResponse, nil
+}
+
+// UpdateField updates a field.
+func (s *FieldsService) UpdateField(ctx context.Context, r UpdateFieldRequest) (*UpdateFieldResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateField()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateField: marshal UpdateFieldRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.UpdateField"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateField: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateField: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateFieldResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.UpdateField: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateField: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.UpdateField: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UpdateFieldResponse, nil
+}
+
+// UpdateFieldSelectOption updates a field select option.
+func (s *FieldsService) UpdateFieldSelectOption(ctx context.Context, r UpdateFieldSelectOptionRequest) (*UpdateFieldSelectOptionResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateFieldSelectOption()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: marshal UpdateFieldSelectOptionRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.UpdateFieldSelectOption"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateFieldSelectOptionResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UpdateFieldSelectOptionResponse, nil
 }
 
 // IncidentsService provides the ability to query, get, declare (create), update,
@@ -1223,8 +3201,10 @@ func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*Ad
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AddLabel: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1262,9 +3242,133 @@ func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*Ad
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddLabelResponse, nil
+}
+
+// AssignLabel assigns a key:value label to the incident
+func (s *IncidentsService) AssignLabel(ctx context.Context, r AssignLabelRequest) (*AssignLabelResponse, error) {
+	if s.client.stubmode {
+		return s.stubAssignLabel()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabel: marshal AssignLabelRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.AssignLabel"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabel: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabel: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AssignLabelResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.AssignLabel: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabel: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.AssignLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.AssignLabelResponse, nil
+}
+
+// AssignLabelByUUID assigns a keyUUID:valueUUID label to the incident
+func (s *IncidentsService) AssignLabelByUUID(ctx context.Context, r AssignLabelByUUIDRequest) (*AssignLabelByUUIDResponse, error) {
+	if s.client.stubmode {
+		return s.stubAssignLabelByUUID()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: marshal AssignLabelByUUIDRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.AssignLabelByUUID"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		AssignLabelByUUIDResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.AssignLabelByUUIDResponse, nil
 }
 
 // AssignRole assigns a role to a user.
@@ -1283,8 +3387,10 @@ func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AssignRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1322,7 +3428,7 @@ func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) 
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AssignRoleResponse, nil
 }
@@ -1343,8 +3449,10 @@ func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.CreateIncident: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1382,7 +3490,7 @@ func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.CreateIncidentResponse, nil
 }
@@ -1403,8 +3511,10 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetIncident: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1442,12 +3552,200 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.GetIncidentResponse, nil
 }
 
+// GetIncidentMembership will return the full list of people involved in an
+// incident
+func (s *IncidentsService) GetIncidentMembership(ctx context.Context, r GetIncidentMembershipRequest) (*GetIncidentMembershipResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetIncidentMembership()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: marshal GetIncidentMembershipRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.GetIncidentMembership"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetIncidentMembershipResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetIncidentMembershipResponse, nil
+}
+
+// GetLabels get the labels from the incident.
+func (s *IncidentsService) GetLabels(ctx context.Context, r GetLabelsRequest) (*GetLabelsResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetLabels()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetLabels: marshal GetLabelsRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.GetLabels"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetLabels: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetLabels: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetLabelsResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.GetLabels: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetLabels: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.GetLabels: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetLabelsResponse, nil
+}
+
+// QueryIncidentPreviews gets a list of Incident Previews.
+func (s *IncidentsService) QueryIncidentPreviews(ctx context.Context, r QueryIncidentPreviewsRequest) (*QueryIncidentPreviewsResponse, error) {
+	if s.client.stubmode {
+		return s.stubQueryIncidentPreviews()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: marshal QueryIncidentPreviewsRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.QueryIncidentPreviews"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		QueryIncidentPreviewsResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.QueryIncidentPreviewsResponse, nil
+}
+
 // QueryIncidents gets a list of Incidents.
+// Deprecated: use QueryIncidentPreviews instead.
 func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsRequest) (*QueryIncidentsResponse, error) {
 	if s.client.stubmode {
 		return s.stubQueryIncidents()
@@ -1463,8 +3761,10 @@ func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.QueryIncidents: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1502,7 +3802,7 @@ func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.QueryIncidentsResponse, nil
 }
@@ -1523,8 +3823,10 @@ func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.RemoveLabel: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1562,9 +3864,133 @@ func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.RemoveLabelResponse, nil
+}
+
+// UnassignLabel unassigns a key:value label from the incident
+func (s *IncidentsService) UnassignLabel(ctx context.Context, r UnassignLabelRequest) (*UnassignLabelResponse, error) {
+	if s.client.stubmode {
+		return s.stubUnassignLabel()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabel: marshal UnassignLabelRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.UnassignLabel"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabel: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabel: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UnassignLabelResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.UnassignLabel: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabel: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.UnassignLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UnassignLabelResponse, nil
+}
+
+// UnassignLabelByUUID unassigns a keyUUID:valueUUID label from the incident
+func (s *IncidentsService) UnassignLabelByUUID(ctx context.Context, r UnassignLabelByUUIDRequest) (*UnassignLabelByUUIDResponse, error) {
+	if s.client.stubmode {
+		return s.stubUnassignLabelByUUID()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: marshal UnassignLabelByUUIDRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.UnassignLabelByUUID"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UnassignLabelByUUIDResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UnassignLabelByUUIDResponse, nil
 }
 
 // UnassignRole removes a role assignment from a user.
@@ -1583,8 +4009,10 @@ func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleReque
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UnassignRole: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1622,7 +4050,7 @@ func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UnassignRoleResponse, nil
 }
@@ -1643,8 +4071,10 @@ func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r Update
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1682,7 +4112,7 @@ func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r Update
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateIncidentEventTimeResponse, nil
 }
@@ -1703,8 +4133,10 @@ func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIn
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1742,7 +4174,7 @@ func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIn
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateIncidentIsDrillResponse, nil
 }
@@ -1763,8 +4195,10 @@ func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1802,7 +4236,7 @@ func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateSeverityResponse, nil
 }
@@ -1823,8 +4257,10 @@ func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusReque
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateStatus: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1862,7 +4298,7 @@ func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateStatusResponse, nil
 }
@@ -1883,8 +4319,10 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateTitle: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1922,9 +4360,594 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTitleResponse, nil
+}
+
+// IntegrationService is used to install Integrations, and wire up hooks.
+// Get one by calling NewIntegrationService.
+type IntegrationService struct {
+	client *Client
+}
+
+// NewIntegrationService gets a new IntegrationService.
+func NewIntegrationService(client *Client) *IntegrationService {
+	return &IntegrationService{
+		client: client,
+	}
+}
+
+// DisableHook disables a Hook.
+func (s *IntegrationService) DisableHook(ctx context.Context, r DisableHookRequest) (*DisableHookResponse, error) {
+	if s.client.stubmode {
+		return s.stubDisableHook()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.DisableHook: marshal DisableHookRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IntegrationService.DisableHook"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.DisableHook: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.DisableHook: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		DisableHookResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IntegrationService.DisableHook: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.DisableHook: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IntegrationService.DisableHook: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.DisableHookResponse, nil
+}
+
+// EnableHook wires up a Hook to an event.
+func (s *IntegrationService) EnableHook(ctx context.Context, r EnableHookRequest) (*EnableHookResponse, error) {
+	if s.client.stubmode {
+		return s.stubEnableHook()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.EnableHook: marshal EnableHookRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IntegrationService.EnableHook"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.EnableHook: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.EnableHook: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		EnableHookResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IntegrationService.EnableHook: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.EnableHook: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IntegrationService.EnableHook: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.EnableHookResponse, nil
+}
+
+// GetHookRuns gets a list of HookRuns for a given Incident.
+func (s *IntegrationService) GetHookRuns(ctx context.Context, r GetHookRunsRequest) (*GetHookRunsResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetHookRuns()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetHookRuns: marshal GetHookRunsRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IntegrationService.GetHookRuns"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetHookRuns: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetHookRuns: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetHookRunsResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IntegrationService.GetHookRuns: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetHookRuns: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IntegrationService.GetHookRuns: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetHookRunsResponse, nil
+}
+
+// RolesService defines the interface for interacting with roles, providing CRUD
+// operations and more fatures related to roles.
+// Get one by calling NewRolesService.
+type RolesService struct {
+	client *Client
+}
+
+// NewRolesService gets a new RolesService.
+func NewRolesService(client *Client) *RolesService {
+	return &RolesService{
+		client: client,
+	}
+}
+
+// ArchiveRole archives a role.
+func (s *RolesService) ArchiveRole(ctx context.Context, r ArchiveRoleRequest) (*ArchiveRoleResponse, error) {
+	if s.client.stubmode {
+		return s.stubArchiveRole()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.ArchiveRole: marshal ArchiveRoleRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "RolesService.ArchiveRole"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.ArchiveRole: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.ArchiveRole: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		ArchiveRoleResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("RolesService.ArchiveRole: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.ArchiveRole: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("RolesService.ArchiveRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.ArchiveRoleResponse, nil
+}
+
+// CreateRole creates a role.
+func (s *RolesService) CreateRole(ctx context.Context, r CreateRoleRequest) (*CreateRoleResponse, error) {
+	if s.client.stubmode {
+		return s.stubCreateRole()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.CreateRole: marshal CreateRoleRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "RolesService.CreateRole"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.CreateRole: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.CreateRole: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		CreateRoleResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("RolesService.CreateRole: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.CreateRole: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("RolesService.CreateRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.CreateRoleResponse, nil
+}
+
+// DeleteRole deletes a role.
+func (s *RolesService) DeleteRole(ctx context.Context, r DeleteRoleRequest) (*DeleteRoleResponse, error) {
+	if s.client.stubmode {
+		return s.stubDeleteRole()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.DeleteRole: marshal DeleteRoleRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "RolesService.DeleteRole"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.DeleteRole: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.DeleteRole: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		DeleteRoleResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("RolesService.DeleteRole: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.DeleteRole: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("RolesService.DeleteRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.DeleteRoleResponse, nil
+}
+
+// GetRoles gets all roles.
+func (s *RolesService) GetRoles(ctx context.Context, r GetRolesRequest) (*GetRolesResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetRoles()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.GetRoles: marshal GetRolesRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "RolesService.GetRoles"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.GetRoles: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.GetRoles: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetRolesResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("RolesService.GetRoles: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.GetRoles: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("RolesService.GetRoles: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetRolesResponse, nil
+}
+
+// UnarchiveRole unarchives a role.
+func (s *RolesService) UnarchiveRole(ctx context.Context, r UnarchiveRoleRequest) (*UnarchiveRoleResponse, error) {
+	if s.client.stubmode {
+		return s.stubUnarchiveRole()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UnarchiveRole: marshal UnarchiveRoleRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "RolesService.UnarchiveRole"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UnarchiveRole: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UnarchiveRole: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UnarchiveRoleResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("RolesService.UnarchiveRole: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UnarchiveRole: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("RolesService.UnarchiveRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UnarchiveRoleResponse, nil
+}
+
+// UpdateRole updates a role.
+func (s *RolesService) UpdateRole(ctx context.Context, r UpdateRoleRequest) (*UpdateRoleResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateRole()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UpdateRole: marshal UpdateRoleRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "RolesService.UpdateRole"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UpdateRole: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UpdateRole: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateRoleResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("RolesService.UpdateRole: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("RolesService.UpdateRole: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("RolesService.UpdateRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UpdateRoleResponse, nil
 }
 
 // TasksService provides methods for managing tasks relating to Incidents.
@@ -1956,8 +4979,10 @@ func (s *TasksService) AddTask(ctx context.Context, r AddTaskRequest) (*AddTaskR
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.AddTask: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -1995,7 +5020,7 @@ func (s *TasksService) AddTask(ctx context.Context, r AddTaskRequest) (*AddTaskR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.AddTaskResponse, nil
 }
@@ -2016,8 +5041,10 @@ func (s *TasksService) DeleteTask(ctx context.Context, r DeleteTaskRequest) (*De
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.DeleteTask: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2055,7 +5082,7 @@ func (s *TasksService) DeleteTask(ctx context.Context, r DeleteTaskRequest) (*De
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.DeleteTaskResponse, nil
 }
@@ -2076,8 +5103,10 @@ func (s *TasksService) UpdateTaskStatus(ctx context.Context, r UpdateTaskStatusR
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2115,7 +5144,7 @@ func (s *TasksService) UpdateTaskStatus(ctx context.Context, r UpdateTaskStatusR
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTaskStatusResponse, nil
 }
@@ -2136,8 +5165,10 @@ func (s *TasksService) UpdateTaskText(ctx context.Context, r UpdateTaskTextReque
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskText: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2175,7 +5206,7 @@ func (s *TasksService) UpdateTaskText(ctx context.Context, r UpdateTaskTextReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTaskTextResponse, nil
 }
@@ -2197,8 +5228,10 @@ func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserReque
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskUser: NewRequest: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
 	req = req.WithContext(ctx)
 	if s.client.BeforeRequest != nil {
 		err = s.client.BeforeRequest(req)
@@ -2236,9 +5269,146 @@ func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserReque
 		return nil, err
 	}
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateTaskUserResponse, nil
+}
+
+// UsersService provides services related to people in the system.
+// Get one by calling NewUsersService.
+type UsersService struct {
+	client *Client
+}
+
+// NewUsersService gets a new UsersService.
+func NewUsersService(client *Client) *UsersService {
+	return &UsersService{
+		client: client,
+	}
+}
+
+// GetUser returns the information about a specific user.
+func (s *UsersService) GetUser(ctx context.Context, r GetUserRequest) (*GetUserResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetUser()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.GetUser: marshal GetUserRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "UsersService.GetUser"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.GetUser: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.GetUser: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetUserResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("UsersService.GetUser: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.GetUser: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("UsersService.GetUser: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetUserResponse, nil
+}
+
+// QueryUsers gets a list of users.
+func (s *UsersService) QueryUsers(ctx context.Context, r QueryUsersRequest) (*QueryUsersResponse, error) {
+	if s.client.stubmode {
+		return s.stubQueryUsers()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.QueryUsers: marshal QueryUsersRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "UsersService.QueryUsers"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.QueryUsers: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.QueryUsers: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		QueryUsersResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("UsersService.QueryUsers: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("UsersService.QueryUsers: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("UsersService.QueryUsers: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.QueryUsersResponse, nil
 }
 
 func (s *ActivityService) stubAddActivity() (*AddActivityResponse, error) {
@@ -2246,6 +5416,46 @@ func (s *ActivityService) stubAddActivity() (*AddActivityResponse, error) {
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -2253,8 +5463,9 @@ func (s *ActivityService) stubAddActivity() (*AddActivityResponse, error) {
 			"something-else": true,
 			"title": "new title"
 		},
-		"immutable": false,
+		"immutable": true,
 		"incidentID": "incident-123",
+		"relevance": "low",
 		"subjectUser": {
 			"name": "Morty Smith",
 			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
@@ -2285,6 +5496,46 @@ func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
 		{
 			"activityItemID": "activity-item-123",
 			"activityKind": "incidentCreated",
+			"attachments": [
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				},
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				}
+			],
 			"body": "The incident was created by user-123",
 			"createdTime": "2021-08-07T11:58:23Z",
 			"eventTime": "2021-08-07T11:58:23Z",
@@ -2292,8 +5543,9 @@ func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
 				"something-else": true,
 				"title": "new title"
 			},
-			"immutable": false,
+			"immutable": true,
 			"incidentID": "incident-123",
+			"relevance": "low",
 			"subjectUser": {
 				"name": "Morty Smith",
 				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
@@ -2312,6 +5564,46 @@ func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
 		{
 			"activityItemID": "activity-item-123",
 			"activityKind": "incidentCreated",
+			"attachments": [
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				},
+				{
+					"attachedByUserID": "user-123",
+					"attachmentErr": "file too large",
+					"attachmentID": "attachment-123",
+					"contentLength": 123456,
+					"contentType": "image/jpeg",
+					"deletedTime": "2019-01-01T00:00:00Z",
+					"displayType": "list",
+					"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+					"ext": ".jpg",
+					"fileType": "image",
+					"hasThumbnail": true,
+					"path": "filename.jpg",
+					"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+					"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+					"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+					"uploadTime": "2019-01-01T00:00:00Z",
+					"useSourceURL": true
+				}
+			],
 			"body": "The incident was created by user-123",
 			"createdTime": "2021-08-07T11:58:23Z",
 			"eventTime": "2021-08-07T11:58:23Z",
@@ -2319,8 +5611,9 @@ func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
 				"something-else": true,
 				"title": "new title"
 			},
-			"immutable": false,
+			"immutable": true,
 			"incidentID": "incident-123",
+			"relevance": "low",
 			"subjectUser": {
 				"name": "Morty Smith",
 				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
@@ -2364,6 +5657,46 @@ func (s *ActivityService) stubRemoveActivity() (*RemoveActivityResponse, error) 
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -2371,8 +5704,9 @@ func (s *ActivityService) stubRemoveActivity() (*RemoveActivityResponse, error) 
 			"something-else": true,
 			"title": "new title"
 		},
-		"immutable": false,
+		"immutable": true,
 		"incidentID": "incident-123",
+		"relevance": "low",
 		"subjectUser": {
 			"name": "Morty Smith",
 			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
@@ -2402,6 +5736,46 @@ func (s *ActivityService) stubUpdateActivityBody() (*UpdateActivityBodyResponse,
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -2409,8 +5783,9 @@ func (s *ActivityService) stubUpdateActivityBody() (*UpdateActivityBodyResponse,
 			"something-else": true,
 			"title": "new title"
 		},
-		"immutable": false,
+		"immutable": true,
 		"incidentID": "incident-123",
+		"relevance": "low",
 		"subjectUser": {
 			"name": "Morty Smith",
 			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
@@ -2440,6 +5815,46 @@ func (s *ActivityService) stubUpdateActivityEventTime() (*UpdateActivityEventTim
 	"activityItem": {
 		"activityItemID": "activity-item-123",
 		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
 		"body": "The incident was created by user-123",
 		"createdTime": "2021-08-07T11:58:23Z",
 		"eventTime": "2021-08-07T11:58:23Z",
@@ -2447,8 +5862,9 @@ func (s *ActivityService) stubUpdateActivityEventTime() (*UpdateActivityEventTim
 			"something-else": true,
 			"title": "new title"
 		},
-		"immutable": false,
+		"immutable": true,
 		"incidentID": "incident-123",
+		"relevance": "low",
 		"subjectUser": {
 			"name": "Morty Smith",
 			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
@@ -2473,6 +5889,572 @@ func (s *ActivityService) stubUpdateActivityEventTime() (*UpdateActivityEventTim
 	return &dest, nil
 }
 
+func (s *ActivityService) stubUpdateActivityRelevance() (*UpdateActivityRelevanceResponse, error) {
+	exampleJSON := `{
+	"activityItem": {
+		"activityItemID": "activity-item-123",
+		"activityKind": "incidentCreated",
+		"attachments": [
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			},
+			{
+				"attachedByUserID": "user-123",
+				"attachmentErr": "file too large",
+				"attachmentID": "attachment-123",
+				"contentLength": 123456,
+				"contentType": "image/jpeg",
+				"deletedTime": "2019-01-01T00:00:00Z",
+				"displayType": "list",
+				"downloadURL": "https://somewhere.com/path/to/filename.jpg",
+				"ext": ".jpg",
+				"fileType": "image",
+				"hasThumbnail": true,
+				"path": "filename.jpg",
+				"sHA512": "327232b67c88cba87c0a85a32bb192df527c21854d6515144d691f8cf1554f8e9969eed443b85e00d5ea21628c0ca4b6bbc9f26c837815fad6e9b3881cbb5cfd",
+				"sourceURL": "https://somewhere-like-slack.com/path/to/filename.jpg",
+				"thumbnailURL": "https://somewhere.com/path/to/thumbnail.jpg",
+				"uploadTime": "2019-01-01T00:00:00Z",
+				"useSourceURL": true
+			}
+		],
+		"body": "The incident was created by user-123",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"eventTime": "2021-08-07T11:58:23Z",
+		"fieldValues": {
+			"something-else": true,
+			"title": "new title"
+		},
+		"immutable": true,
+		"incidentID": "incident-123",
+		"relevance": "low",
+		"subjectUser": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"tags": [
+			"important"
+		],
+		"url": "https://meet.google.com/my-incident-room",
+		"user": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		}
+	},
+	"error": "something went wrong"
+}`
+	var dest UpdateActivityRelevanceResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateActivityRelevance: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubAddField() (*AddFieldResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"field": {
+		"archived": "false",
+		"color": "#FF00FF",
+		"description": "field description",
+		"domainName": "string",
+		"externalID": "1",
+		"icon": "fa-alt",
+		"immutable": "false",
+		"name": "field name",
+		"required": "true",
+		"selectoptions": [
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			},
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			}
+		],
+		"slug": "field_slug",
+		"source": "incident",
+		"type": "string",
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+	}
+}`
+	var dest AddFieldResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAddField: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubAddFieldSelectOption() (*AddFieldSelectOptionResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"fieldSelectOptionUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f91333"
+}`
+	var dest AddFieldSelectOptionResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAddFieldSelectOption: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubAddLabelKey() (*AddLabelKeyResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"field": {
+		"archived": "false",
+		"color": "#FF00FF",
+		"description": "field description",
+		"domainName": "string",
+		"externalID": "1",
+		"icon": "fa-alt",
+		"immutable": "false",
+		"name": "field name",
+		"required": "true",
+		"selectoptions": [
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			},
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			}
+		],
+		"slug": "field_slug",
+		"source": "incident",
+		"type": "string",
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+	}
+}`
+	var dest AddLabelKeyResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAddLabelKey: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubAddLabelValue() (*AddLabelValueResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"field": {
+		"archived": "false",
+		"color": "#FF00FF",
+		"description": "field description",
+		"domainName": "string",
+		"externalID": "1",
+		"icon": "fa-alt",
+		"immutable": "false",
+		"name": "field name",
+		"required": "true",
+		"selectoptions": [
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			},
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			}
+		],
+		"slug": "field_slug",
+		"source": "incident",
+		"type": "string",
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+	}
+}`
+	var dest AddLabelValueResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAddLabelValue: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubArchiveField() (*ArchiveFieldResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest ArchiveFieldResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubArchiveField: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubDeleteField() (*DeleteFieldResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest DeleteFieldResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubDeleteField: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubDeleteFieldSelectOption() (*DeleteFieldSelectOptionResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest DeleteFieldSelectOptionResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubDeleteFieldSelectOption: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubGetField() (*GetFieldResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"field": {
+		"archived": "false",
+		"color": "#FF00FF",
+		"description": "field description",
+		"domainName": "string",
+		"externalID": "1",
+		"icon": "fa-alt",
+		"immutable": "false",
+		"name": "field name",
+		"required": "true",
+		"selectoptions": [
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			},
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			}
+		],
+		"slug": "field_slug",
+		"source": "incident",
+		"type": "string",
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+	}
+}`
+	var dest GetFieldResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetField: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubGetFieldValues() (*GetFieldValuesResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"fieldValues": [
+		{
+			"field": {
+				"archived": "false",
+				"color": "#FF00FF",
+				"description": "field description",
+				"domainName": "string",
+				"externalID": "1",
+				"icon": "fa-alt",
+				"immutable": "false",
+				"name": "field name",
+				"required": "true",
+				"selectoptions": [
+					{
+						"color": "#000000",
+						"description": "This label represents a new option",
+						"externalID": "1",
+						"icon": "file-alt",
+						"label": "My field option name",
+						"source": "incident",
+						"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+						"value": "value"
+					},
+					{
+						"color": "#000000",
+						"description": "This label represents a new option",
+						"externalID": "1",
+						"icon": "file-alt",
+						"label": "My field option name",
+						"source": "incident",
+						"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+						"value": "value"
+					}
+				],
+				"slug": "field_slug",
+				"source": "incident",
+				"type": "string",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+			},
+			"value": "value"
+		},
+		{
+			"field": {
+				"archived": "false",
+				"color": "#FF00FF",
+				"description": "field description",
+				"domainName": "string",
+				"externalID": "1",
+				"icon": "fa-alt",
+				"immutable": "false",
+				"name": "field name",
+				"required": "true",
+				"selectoptions": [
+					{
+						"color": "#000000",
+						"description": "This label represents a new option",
+						"externalID": "1",
+						"icon": "file-alt",
+						"label": "My field option name",
+						"source": "incident",
+						"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+						"value": "value"
+					},
+					{
+						"color": "#000000",
+						"description": "This label represents a new option",
+						"externalID": "1",
+						"icon": "file-alt",
+						"label": "My field option name",
+						"source": "incident",
+						"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+						"value": "value"
+					}
+				],
+				"slug": "field_slug",
+				"source": "incident",
+				"type": "string",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+			},
+			"value": "value"
+		}
+	]
+}`
+	var dest GetFieldValuesResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetFieldValues: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"fields": [
+		{
+			"archived": "false",
+			"color": "#FF00FF",
+			"description": "field description",
+			"domainName": "string",
+			"externalID": "1",
+			"icon": "fa-alt",
+			"immutable": "false",
+			"name": "field name",
+			"required": "true",
+			"selectoptions": [
+				{
+					"color": "#000000",
+					"description": "This label represents a new option",
+					"externalID": "1",
+					"icon": "file-alt",
+					"label": "My field option name",
+					"source": "incident",
+					"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				},
+				{
+					"color": "#000000",
+					"description": "This label represents a new option",
+					"externalID": "1",
+					"icon": "file-alt",
+					"label": "My field option name",
+					"source": "incident",
+					"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				}
+			],
+			"slug": "field_slug",
+			"source": "incident",
+			"type": "string",
+			"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+		},
+		{
+			"archived": "false",
+			"color": "#FF00FF",
+			"description": "field description",
+			"domainName": "string",
+			"externalID": "1",
+			"icon": "fa-alt",
+			"immutable": "false",
+			"name": "field name",
+			"required": "true",
+			"selectoptions": [
+				{
+					"color": "#000000",
+					"description": "This label represents a new option",
+					"externalID": "1",
+					"icon": "file-alt",
+					"label": "My field option name",
+					"source": "incident",
+					"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				},
+				{
+					"color": "#000000",
+					"description": "This label represents a new option",
+					"externalID": "1",
+					"icon": "file-alt",
+					"label": "My field option name",
+					"source": "incident",
+					"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				}
+			],
+			"slug": "field_slug",
+			"source": "incident",
+			"type": "string",
+			"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+		}
+	]
+}`
+	var dest GetFieldsResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetFields: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubUnarchiveField() (*UnarchiveFieldResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest UnarchiveFieldResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUnarchiveField: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubUpdateField() (*UpdateFieldResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"field": {
+		"archived": "false",
+		"color": "#FF00FF",
+		"description": "field description",
+		"domainName": "string",
+		"externalID": "1",
+		"icon": "fa-alt",
+		"immutable": "false",
+		"name": "field name",
+		"required": "true",
+		"selectoptions": [
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			},
+			{
+				"color": "#000000",
+				"description": "This label represents a new option",
+				"externalID": "1",
+				"icon": "file-alt",
+				"label": "My field option name",
+				"source": "incident",
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"value": "value"
+			}
+		],
+		"slug": "field_slug",
+		"source": "incident",
+		"type": "string",
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+	}
+}`
+	var dest UpdateFieldResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateField: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *FieldsService) stubUpdateFieldSelectOption() (*UpdateFieldSelectOptionResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest UpdateFieldSelectOptionResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateFieldSelectOption: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 	exampleJSON := `{
 	"error": "something went wrong",
@@ -2488,48 +6470,68 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -2585,6 +6587,64 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 	return &dest, nil
 }
 
+func (s *IncidentsService) stubAssignLabel() (*AssignLabelResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"labels": [
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		},
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		}
+	]
+}`
+	var dest AssignLabelResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAssignLabel: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IncidentsService) stubAssignLabelByUUID() (*AssignLabelByUUIDResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"labels": [
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		},
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		}
+	]
+}`
+	var dest AssignLabelByUUIDResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubAssignLabelByUUID: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 	exampleJSON := `{
 	"didChange": true,
@@ -2601,48 +6661,68 @@ func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -2713,48 +6793,68 @@ func (s *IncidentsService) stubCreateIncident() (*CreateIncidentResponse, error)
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -2825,48 +6925,68 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -2922,6 +7042,249 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 	return &dest, nil
 }
 
+func (s *IncidentsService) stubGetIncidentMembership() (*GetIncidentMembershipResponse, error) {
+	exampleJSON := `{
+	"assignments": [
+		{
+			"role": {
+				"archived": true,
+				"createdAt": "2020-01-01T00:00:00Z",
+				"description": "The commander is the incident commander.",
+				"important": true,
+				"mandatory": true,
+				"name": "commander",
+				"orgID": "org-1",
+				"roleID": 1,
+				"updatedAt": "2020-01-01T00:00:00Z"
+			},
+			"roleID": 1,
+			"user": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			}
+		},
+		{
+			"role": {
+				"archived": true,
+				"createdAt": "2020-01-01T00:00:00Z",
+				"description": "The commander is the incident commander.",
+				"important": true,
+				"mandatory": true,
+				"name": "commander",
+				"orgID": "org-1",
+				"roleID": 1,
+				"updatedAt": "2020-01-01T00:00:00Z"
+			},
+			"roleID": 1,
+			"user": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			}
+		}
+	],
+	"error": "something went wrong"
+}`
+	var dest GetIncidentMembershipResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetIncidentMembership: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IncidentsService) stubGetLabels() (*GetLabelsResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"labels": [
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		},
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		}
+	]
+}`
+	var dest GetLabelsResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetLabels: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IncidentsService) stubQueryIncidentPreviews() (*QueryIncidentPreviewsResponse, error) {
+	exampleJSON := `{
+	"cursor": {
+		"hasMore": true,
+		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+	},
+	"error": "something went wrong",
+	"incidentPreviews": [
+		{
+			"closedTime": "2021-08-07T11:58:23Z",
+			"createdByUser": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"createdTime": "2021-08-07T11:58:23Z",
+			"description": "Looks like there is a problem with the load balancers...",
+			"fieldValues": [
+				{
+					"fieldUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				},
+				{
+					"fieldUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				}
+			],
+			"heroImagePath": "/incident/api/hero-images/1234/mb6SVYPti2uY1qOokhs2mavgMFOtqDe/v1234/1234.png",
+			"incidentEnd": "2022-02-11 00:50:20.574137",
+			"incidentID": "incident-123",
+			"incidentMembershipPreview": {
+				"importantAssignments": [
+					{
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					},
+					{
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					}
+				],
+				"totalAssignments": 5,
+				"totalParticipants": 3
+			},
+			"incidentStart": "2022-02-11 00:50:20.574137",
+			"incidentType": "internal",
+			"isDrill": true,
+			"labels": [
+				{
+					"colorHex": "#ff0000",
+					"description": "Customers are affected by this incident.",
+					"key": "service_name",
+					"label": "customers-affected"
+				},
+				{
+					"colorHex": "#ff0000",
+					"description": "Customers are affected by this incident.",
+					"key": "service_name",
+					"label": "customers-affected"
+				}
+			],
+			"modifiedTime": "2021-08-07T11:58:23Z",
+			"severityID": "severity-123",
+			"severityLabel": "major",
+			"slug": "high-latency-in-web-requests",
+			"status": "active",
+			"summary": "Lighting struck the server so we lost some throughput. We sprayed it with an 8-bit fire extinguisher and now it's back to normal.",
+			"title": "high latency in web requests",
+			"version": 4
+		},
+		{
+			"closedTime": "2021-08-07T11:58:23Z",
+			"createdByUser": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"createdTime": "2021-08-07T11:58:23Z",
+			"description": "Looks like there is a problem with the load balancers...",
+			"fieldValues": [
+				{
+					"fieldUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				},
+				{
+					"fieldUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+					"value": "value"
+				}
+			],
+			"heroImagePath": "/incident/api/hero-images/1234/mb6SVYPti2uY1qOokhs2mavgMFOtqDe/v1234/1234.png",
+			"incidentEnd": "2022-02-11 00:50:20.574137",
+			"incidentID": "incident-123",
+			"incidentMembershipPreview": {
+				"importantAssignments": [
+					{
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					},
+					{
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					}
+				],
+				"totalAssignments": 5,
+				"totalParticipants": 3
+			},
+			"incidentStart": "2022-02-11 00:50:20.574137",
+			"incidentType": "internal",
+			"isDrill": true,
+			"labels": [
+				{
+					"colorHex": "#ff0000",
+					"description": "Customers are affected by this incident.",
+					"key": "service_name",
+					"label": "customers-affected"
+				},
+				{
+					"colorHex": "#ff0000",
+					"description": "Customers are affected by this incident.",
+					"key": "service_name",
+					"label": "customers-affected"
+				}
+			],
+			"modifiedTime": "2021-08-07T11:58:23Z",
+			"severityID": "severity-123",
+			"severityLabel": "major",
+			"slug": "high-latency-in-web-requests",
+			"status": "active",
+			"summary": "Lighting struck the server so we lost some throughput. We sprayed it with an 8-bit fire extinguisher and now it's back to normal.",
+			"title": "high latency in web requests",
+			"version": 4
+		}
+	],
+	"query": {
+		"limit": 10,
+		"orderDirection": "ASC",
+		"orderField": "createdTime",
+		"queryString": "isdrill:false or(label:security label:important)"
+	}
+}`
+	var dest QueryIncidentPreviewsResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubQueryIncidentPreviews: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error) {
 	exampleJSON := `{
 	"cursor": {
@@ -2942,48 +7305,68 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			"heroImagePath": "/relative/path/to/hero/image.png",
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
+			"incidentMembership": {
+				"assignments": [
+					{
+						"role": {
+							"archived": true,
+							"createdAt": "2020-01-01T00:00:00Z",
+							"description": "The commander is the incident commander.",
+							"important": true,
+							"mandatory": true,
+							"name": "commander",
+							"orgID": "org-1",
+							"roleID": 1,
+							"updatedAt": "2020-01-01T00:00:00Z"
+						},
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					},
+					{
+						"role": {
+							"archived": true,
+							"createdAt": "2020-01-01T00:00:00Z",
+							"description": "The commander is the incident commander.",
+							"important": true,
+							"mandatory": true,
+							"name": "commander",
+							"orgID": "org-1",
+							"roleID": 1,
+							"updatedAt": "2020-01-01T00:00:00Z"
+						},
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					}
+				],
+				"totalAssignments": 5,
+				"totalParticipants": 3
+			},
 			"incidentStart": "2022-02-11 00:50:20.574137",
-			"isDrill": false,
+			"isDrill": true,
 			"labels": [
 				{
 					"colorHex": "#ff0000",
 					"description": "Customers are affected by this incident.",
+					"key": "service_name",
 					"label": "customers-affected"
 				},
 				{
 					"colorHex": "#ff0000",
 					"description": "Customers are affected by this incident.",
+					"key": "service_name",
 					"label": "customers-affected"
 				}
 			],
 			"modifiedTime": "2021-08-07T11:58:23Z",
 			"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-			"roles": [
-				{
-					"description": "Investigator searches for the problem and reports back.",
-					"important": true,
-					"mandatory": true,
-					"maxPeople": 1,
-					"role": "investigator",
-					"user": {
-						"name": "Morty Smith",
-						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-						"userID": "user-123"
-					}
-				},
-				{
-					"description": "Investigator searches for the problem and reports back.",
-					"important": true,
-					"mandatory": true,
-					"maxPeople": 1,
-					"role": "investigator",
-					"user": {
-						"name": "Morty Smith",
-						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-						"userID": "user-123"
-					}
-				}
-			],
 			"severity": "minor",
 			"status": "active",
 			"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3043,48 +7426,68 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			"heroImagePath": "/relative/path/to/hero/image.png",
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
+			"incidentMembership": {
+				"assignments": [
+					{
+						"role": {
+							"archived": true,
+							"createdAt": "2020-01-01T00:00:00Z",
+							"description": "The commander is the incident commander.",
+							"important": true,
+							"mandatory": true,
+							"name": "commander",
+							"orgID": "org-1",
+							"roleID": 1,
+							"updatedAt": "2020-01-01T00:00:00Z"
+						},
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					},
+					{
+						"role": {
+							"archived": true,
+							"createdAt": "2020-01-01T00:00:00Z",
+							"description": "The commander is the incident commander.",
+							"important": true,
+							"mandatory": true,
+							"name": "commander",
+							"orgID": "org-1",
+							"roleID": 1,
+							"updatedAt": "2020-01-01T00:00:00Z"
+						},
+						"roleID": 1,
+						"user": {
+							"name": "Morty Smith",
+							"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+							"userID": "user-123"
+						}
+					}
+				],
+				"totalAssignments": 5,
+				"totalParticipants": 3
+			},
 			"incidentStart": "2022-02-11 00:50:20.574137",
-			"isDrill": false,
+			"isDrill": true,
 			"labels": [
 				{
 					"colorHex": "#ff0000",
 					"description": "Customers are affected by this incident.",
+					"key": "service_name",
 					"label": "customers-affected"
 				},
 				{
 					"colorHex": "#ff0000",
 					"description": "Customers are affected by this incident.",
+					"key": "service_name",
 					"label": "customers-affected"
 				}
 			],
 			"modifiedTime": "2021-08-07T11:58:23Z",
 			"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-			"roles": [
-				{
-					"description": "Investigator searches for the problem and reports back.",
-					"important": true,
-					"mandatory": true,
-					"maxPeople": 1,
-					"role": "investigator",
-					"user": {
-						"name": "Morty Smith",
-						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-						"userID": "user-123"
-					}
-				},
-				{
-					"description": "Investigator searches for the problem and reports back.",
-					"important": true,
-					"mandatory": true,
-					"maxPeople": 1,
-					"role": "investigator",
-					"user": {
-						"name": "Morty Smith",
-						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-						"userID": "user-123"
-					}
-				}
-			],
 			"severity": "minor",
 			"status": "active",
 			"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3175,48 +7578,68 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3272,6 +7695,64 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 	return &dest, nil
 }
 
+func (s *IncidentsService) stubUnassignLabel() (*UnassignLabelResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"labels": [
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		},
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		}
+	]
+}`
+	var dest UnassignLabelResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUnassignLabel: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IncidentsService) stubUnassignLabelByUUID() (*UnassignLabelByUUIDResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"labels": [
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		},
+		{
+			"colorHex": "#ff0000",
+			"description": "Customers are affected by this incident.",
+			"key": "service_name",
+			"keyUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"value": "customers-affected",
+			"valueUUID": "3fb1e5d7-3ef2-11ef-b731-deab26f9160f"
+		}
+	]
+}`
+	var dest UnassignLabelByUUIDResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUnassignLabelByUUID: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 	exampleJSON := `{
 	"didChange": true,
@@ -3288,48 +7769,68 @@ func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3411,48 +7912,68 @@ func (s *IncidentsService) stubUpdateIncidentIsDrill() (*UpdateIncidentIsDrillRe
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3523,48 +8044,68 @@ func (s *IncidentsService) stubUpdateSeverity() (*UpdateSeverityResponse, error)
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3635,48 +8176,68 @@ func (s *IncidentsService) stubUpdateStatus() (*UpdateStatusResponse, error) {
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3747,48 +8308,68 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 		"heroImagePath": "/relative/path/to/hero/image.png",
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
+		"incidentMembership": {
+			"assignments": [
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				},
+				{
+					"role": {
+						"archived": true,
+						"createdAt": "2020-01-01T00:00:00Z",
+						"description": "The commander is the incident commander.",
+						"important": true,
+						"mandatory": true,
+						"name": "commander",
+						"orgID": "org-1",
+						"roleID": 1,
+						"updatedAt": "2020-01-01T00:00:00Z"
+					},
+					"roleID": 1,
+					"user": {
+						"name": "Morty Smith",
+						"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+						"userID": "user-123"
+					}
+				}
+			],
+			"totalAssignments": 5,
+			"totalParticipants": 3
+		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
-		"isDrill": false,
+		"isDrill": true,
 		"labels": [
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			},
 			{
 				"colorHex": "#ff0000",
 				"description": "Customers are affected by this incident.",
+				"key": "service_name",
 				"label": "customers-affected"
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
 		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
-		"roles": [
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			},
-			{
-				"description": "Investigator searches for the problem and reports back.",
-				"important": true,
-				"mandatory": true,
-				"maxPeople": 1,
-				"role": "investigator",
-				"user": {
-					"name": "Morty Smith",
-					"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
-					"userID": "user-123"
-				}
-			}
-		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -3840,6 +8421,190 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 	var dest UpdateTitleResponse
 	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
 		return nil, fmt.Errorf("stubUpdateTitle: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IntegrationService) stubDisableHook() (*DisableHookResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest DisableHookResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubDisableHook: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IntegrationService) stubEnableHook() (*EnableHookResponse, error) {
+	exampleJSON := `{
+	"enabledHookID": "enabled-hook-123",
+	"error": "something went wrong"
+}`
+	var dest EnableHookResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubEnableHook: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IntegrationService) stubGetHookRuns() (*GetHookRunsResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"hookRuns": [
+		{
+			"enabledHookID": "enabled-hook-123",
+			"error": "Something went wrong",
+			"eventKind": "updatedRole",
+			"eventName": "incidentCreated",
+			"hookID": "hook-123",
+			"integrationID": "integration-123",
+			"lastRun": "2020-01-01T00:00:00Z",
+			"lastUpdate": "2020-01-01T00:00:00Z",
+			"metadata": {
+				"explanation": "A meeting was created.",
+				"title": "Meeting Created",
+				"url": "https://somewhere.com/123"
+			},
+			"status": "todo",
+			"updateError": "failed to connect",
+			"updateStatus": "todo"
+		},
+		{
+			"enabledHookID": "enabled-hook-123",
+			"error": "Something went wrong",
+			"eventKind": "updatedRole",
+			"eventName": "incidentCreated",
+			"hookID": "hook-123",
+			"integrationID": "integration-123",
+			"lastRun": "2020-01-01T00:00:00Z",
+			"lastUpdate": "2020-01-01T00:00:00Z",
+			"metadata": {
+				"explanation": "A meeting was created.",
+				"title": "Meeting Created",
+				"url": "https://somewhere.com/123"
+			},
+			"status": "todo",
+			"updateError": "failed to connect",
+			"updateStatus": "todo"
+		}
+	]
+}`
+	var dest GetHookRunsResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetHookRuns: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *RolesService) stubArchiveRole() (*ArchiveRoleResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest ArchiveRoleResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubArchiveRole: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *RolesService) stubCreateRole() (*CreateRoleResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"role": {
+		"archived": true,
+		"createdAt": "2020-01-01T00:00:00Z",
+		"description": "The commander is the incident commander.",
+		"important": true,
+		"mandatory": true,
+		"name": "commander",
+		"orgID": "org-1",
+		"roleID": 1,
+		"updatedAt": "2020-01-01T00:00:00Z"
+	}
+}`
+	var dest CreateRoleResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubCreateRole: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *RolesService) stubDeleteRole() (*DeleteRoleResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest DeleteRoleResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubDeleteRole: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *RolesService) stubGetRoles() (*GetRolesResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"roles": [
+		{
+			"archived": true,
+			"createdAt": "2020-01-01T00:00:00Z",
+			"description": "The commander is the incident commander.",
+			"important": true,
+			"mandatory": true,
+			"name": "commander",
+			"orgID": "org-1",
+			"roleID": 1,
+			"updatedAt": "2020-01-01T00:00:00Z"
+		},
+		{
+			"archived": true,
+			"createdAt": "2020-01-01T00:00:00Z",
+			"description": "The commander is the incident commander.",
+			"important": true,
+			"mandatory": true,
+			"name": "commander",
+			"orgID": "org-1",
+			"roleID": 1,
+			"updatedAt": "2020-01-01T00:00:00Z"
+		}
+	]
+}`
+	var dest GetRolesResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetRoles: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *RolesService) stubUnarchiveRole() (*UnarchiveRoleResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest UnarchiveRoleResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUnarchiveRole: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *RolesService) stubUpdateRole() (*UpdateRoleResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"role": {
+		"archived": true,
+		"createdAt": "2020-01-01T00:00:00Z",
+		"description": "The commander is the incident commander.",
+		"important": true,
+		"mandatory": true,
+		"name": "commander",
+		"orgID": "org-1",
+		"roleID": 1,
+		"updatedAt": "2020-01-01T00:00:00Z"
+	}
+}`
+	var dest UpdateRoleResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateRole: json.Unmarshal: %w", err)
 	}
 	return &dest, nil
 }
@@ -4186,6 +8951,76 @@ func (s *TasksService) stubUpdateTaskUser() (*UpdateTaskUserResponse, error) {
 	return &dest, nil
 }
 
+func (s *UsersService) stubGetUser() (*GetUserResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"user": {
+		"email": "you@company.com",
+		"grafanaLogin": "admin",
+		"grafanaUserID": "123",
+		"internalUserID": "user-12345",
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"msTeamsUserID": "26e2b619-b955-483f-a519-c8950aacbaa9",
+		"name": "Morty Smith",
+		"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+		"slackTeamID": "DEF123456",
+		"slackUserID": "ABC123456",
+		"userID": "grafana-incident:123"
+	}
+}`
+	var dest GetUserResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetUser: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *UsersService) stubQueryUsers() (*QueryUsersResponse, error) {
+	exampleJSON := `{
+	"cursor": {
+		"hasMore": true,
+		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+	},
+	"error": "something went wrong",
+	"query": {
+		"limit": 10
+	},
+	"users": [
+		{
+			"email": "you@company.com",
+			"grafanaLogin": "admin",
+			"grafanaUserID": "123",
+			"internalUserID": "user-12345",
+			"modifiedTime": "2021-08-07T11:58:23Z",
+			"msTeamsUserID": "26e2b619-b955-483f-a519-c8950aacbaa9",
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"slackTeamID": "DEF123456",
+			"slackUserID": "ABC123456",
+			"userID": "grafana-incident:123"
+		},
+		{
+			"email": "you@company.com",
+			"grafanaLogin": "admin",
+			"grafanaUserID": "123",
+			"internalUserID": "user-12345",
+			"modifiedTime": "2021-08-07T11:58:23Z",
+			"msTeamsUserID": "26e2b619-b955-483f-a519-c8950aacbaa9",
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"slackTeamID": "DEF123456",
+			"slackUserID": "ABC123456",
+			"userID": "grafana-incident:123"
+		}
+	]
+}`
+	var dest QueryUsersResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubQueryUsers: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 // Options contains constants to use for various fields across the API.
 // It follows Options.{ObjectName}{FieldName}.{Option} structure, for example
 // Options.IncidentSeverity.Pending.
@@ -4274,15 +9109,24 @@ var Options struct {
 		SiftResult string
 	}
 
-	// ActivityItemTags contains the acceptable values for the
-	// ActivityItem.Tags field.
-	ActivityItemTags struct {
+	// ActivityItemRelevance contains the acceptable values for the
+	// ActivityItem.Relevance field.
+	ActivityItemRelevance struct {
 
-		// Important == "important"
-		Important string
+		// Automatic == "automatic"
+		Automatic string
 
-		// Starred == "starred"
-		Starred string
+		// Archive == "archive"
+		Archive string
+
+		// Low == "low"
+		Low string
+
+		// Normal == "normal"
+		Normal string
+
+		// High == "high"
+		High string
 	}
 
 	// ActivityQueryOrderDirection contains the acceptable values for the
@@ -4318,21 +9162,35 @@ var Options struct {
 		Observer string
 	}
 
-	// CreateIncidentRequestSeverity contains the acceptable values for the
-	// CreateIncidentRequest.Severity field.
-	CreateIncidentRequestSeverity struct {
+	// AttachmentFileType contains the acceptable values for the
+	// Attachment.FileType field.
+	AttachmentFileType struct {
 
-		// Pending == "pending"
-		Pending string
+		// File == "file"
+		File string
 
-		// Minor == "minor"
-		Minor string
+		// Video == "video"
+		Video string
 
-		// Major == "major"
-		Major string
+		// Image == "image"
+		Image string
 
-		// Critical == "critical"
-		Critical string
+		// Audio == "audio"
+		Audio string
+
+		// Screenshare == "screenshare"
+		Screenshare string
+	}
+
+	// AttachmentDisplayType contains the acceptable values for the
+	// Attachment.DisplayType field.
+	AttachmentDisplayType struct {
+
+		// List == "list"
+		List string
+
+		// Embed == "embed"
+		Embed string
 	}
 
 	// CreateIncidentRequestStatus contains the acceptable values for the
@@ -4346,21 +9204,137 @@ var Options struct {
 		Resolved string
 	}
 
-	// IncidentSeverity contains the acceptable values for the
-	// Incident.Severity field.
-	IncidentSeverity struct {
+	// CustomMetadataFieldType contains the acceptable values for the
+	// CustomMetadataField.Type field.
+	CustomMetadataFieldType struct {
 
-		// Pending == "pending"
-		Pending string
+		// String == "string"
+		String string
 
-		// Minor == "minor"
-		Minor string
+		// SingleSelect == "single-select"
+		SingleSelect string
 
-		// Major == "major"
-		Major string
+		// MultiSelect == "multi-select"
+		MultiSelect string
 
-		// Critical == "critical"
-		Critical string
+		// Bool == "bool"
+		Bool string
+
+		// Number == "number"
+		Number string
+
+		// Date == "date"
+		Date string
+	}
+
+	// CustomMetadataFieldDomainName contains the acceptable values for the
+	// CustomMetadataField.DomainName field.
+	CustomMetadataFieldDomainName struct {
+
+		// Labels == "labels"
+		Labels string
+
+		// Incident == "incident"
+		Incident string
+	}
+
+	// EnableHookRequestEventName contains the acceptable values for the
+	// EnableHookRequest.EventName field.
+	EnableHookRequestEventName struct {
+
+		// IncidentCreated == "incidentCreated"
+		IncidentCreated string
+
+		// IncidentDeleted == "incidentDeleted"
+		IncidentDeleted string
+
+		// IncidentUpdated == "incidentUpdated"
+		IncidentUpdated string
+
+		// IncidentClosed == "incidentClosed"
+		IncidentClosed string
+
+		// ManuallyTriggered == "manuallyTriggered"
+		ManuallyTriggered string
+
+		// IncidentFilter == "incidentFilter"
+		IncidentFilter string
+	}
+
+	// FieldType contains the acceptable values for the
+	// Field.Type field.
+	FieldType struct {
+
+		// String == "string"
+		String string
+
+		// StringGrafanaAPIKeyViewer == "string[grafana.apiKey:viewer]"
+		StringGrafanaAPIKeyViewer string
+
+		// StringGrafanaAPIKeyAdmin == "string[grafana.apiKey:admin]"
+		StringGrafanaAPIKeyAdmin string
+
+		// Bool == "bool"
+		Bool string
+	}
+
+	// GetFieldValuesRequestTargetKind contains the acceptable values for the
+	// GetFieldValuesRequest.TargetKind field.
+	GetFieldValuesRequestTargetKind struct {
+
+		// Incident == "incident"
+		Incident string
+	}
+
+	// HookRunEventName contains the acceptable values for the
+	// HookRun.EventName field.
+	HookRunEventName struct {
+
+		// IncidentCreated == "incidentCreated"
+		IncidentCreated string
+
+		// IncidentDeleted == "incidentDeleted"
+		IncidentDeleted string
+
+		// IncidentUpdated == "incidentUpdated"
+		IncidentUpdated string
+
+		// IncidentClosed == "incidentClosed"
+		IncidentClosed string
+
+		// ManuallyTriggered == "manuallyTriggered"
+		ManuallyTriggered string
+
+		// IncidentFilter == "incidentFilter"
+		IncidentFilter string
+	}
+
+	// HookRunUpdateStatus contains the acceptable values for the
+	// HookRun.UpdateStatus field.
+	HookRunUpdateStatus struct {
+
+		// Todo == "todo"
+		Todo string
+
+		// Success == "success"
+		Success string
+
+		// Failed == "failed"
+		Failed string
+	}
+
+	// HookRunStatus contains the acceptable values for the
+	// HookRun.Status field.
+	HookRunStatus struct {
+
+		// Todo == "todo"
+		Todo string
+
+		// Success == "success"
+		Success string
+
+		// Failed == "failed"
+		Failed string
 	}
 
 	// IncidentStatus contains the acceptable values for the
@@ -4374,18 +9348,75 @@ var Options struct {
 		Resolved string
 	}
 
-	// IncidentRoleRole contains the acceptable values for the
-	// IncidentRole.Role field.
-	IncidentRoleRole struct {
+	// IncidentPreviewIncidentType contains the acceptable values for the
+	// IncidentPreview.IncidentType field.
+	IncidentPreviewIncidentType struct {
 
-		// Commander == "commander"
-		Commander string
+		// Internal == "internal"
+		Internal string
 
-		// Investigator == "investigator"
-		Investigator string
+		// Private == "private"
+		Private string
+	}
 
-		// Observer == "observer"
-		Observer string
+	// IncidentPreviewStatus contains the acceptable values for the
+	// IncidentPreview.Status field.
+	IncidentPreviewStatus struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// IncidentPreviewsQueryOrderDirection contains the acceptable values for the
+	// IncidentPreviewsQuery.OrderDirection field.
+	IncidentPreviewsQueryOrderDirection struct {
+
+		// ASC == "ASC"
+		ASC string
+
+		// DESC == "DESC"
+		DESC string
+	}
+
+	// IncidentPreviewsQueryOrderField contains the acceptable values for the
+	// IncidentPreviewsQuery.OrderField field.
+	IncidentPreviewsQueryOrderField struct {
+
+		// IncidentID == "incidentID"
+		IncidentID string
+
+		// CreatedTime == "createdTime"
+		CreatedTime string
+
+		// ModifiedTime == "modifiedTime"
+		ModifiedTime string
+
+		// Title == "title"
+		Title string
+
+		// Status == "status"
+		Status string
+
+		// Severity == "severity"
+		Severity string
+
+		// Prefix == "prefix"
+		Prefix string
+
+		// IsDrill == "isDrill"
+		IsDrill string
+
+		// IncidentStart == "incidentStart"
+		IncidentStart string
+
+		// IncidentEnd == "incidentEnd"
+		IncidentEnd string
+
+		// ClosedTime == "closedTime"
+		ClosedTime string
 	}
 
 	// IncidentsQueryIncludeStatuses contains the acceptable values for the
@@ -4449,6 +9480,26 @@ var Options struct {
 		Observer string
 	}
 
+	// UpdateActivityRelevanceRequestRelevance contains the acceptable values for the
+	// UpdateActivityRelevanceRequest.Relevance field.
+	UpdateActivityRelevanceRequestRelevance struct {
+
+		// Automatic == "automatic"
+		Automatic string
+
+		// Archive == "archive"
+		Archive string
+
+		// Low == "low"
+		Low string
+
+		// Normal == "normal"
+		Normal string
+
+		// High == "high"
+		High string
+	}
+
 	// UpdateIncidentEventTimeRequestActivityItemKind contains the acceptable values for the
 	// UpdateIncidentEventTimeRequest.ActivityItemKind field.
 	UpdateIncidentEventTimeRequestActivityItemKind struct {
@@ -4460,21 +9511,15 @@ var Options struct {
 		IncidentStart string
 	}
 
-	// UpdateSeverityRequestSeverity contains the acceptable values for the
-	// UpdateSeverityRequest.Severity field.
-	UpdateSeverityRequestSeverity struct {
+	// UpdateIncidentEventTimeRequestEventName contains the acceptable values for the
+	// UpdateIncidentEventTimeRequest.EventName field.
+	UpdateIncidentEventTimeRequestEventName struct {
 
-		// Pending == "pending"
-		Pending string
+		// IncidentEnd == "incidentEnd"
+		IncidentEnd string
 
-		// Minor == "minor"
-		Minor string
-
-		// Major == "major"
-		Major string
-
-		// Critical == "critical"
-		Critical string
+		// IncidentStart == "incidentStart"
+		IncidentStart string
 	}
 
 	// UpdateStatusRequestStatus contains the acceptable values for the
@@ -4557,9 +9602,15 @@ func init() {
 
 	Options.ActivityItemActivityKind.SiftResult = "siftResult"
 
-	Options.ActivityItemTags.Important = "important"
+	Options.ActivityItemRelevance.Automatic = "automatic"
 
-	Options.ActivityItemTags.Starred = "starred"
+	Options.ActivityItemRelevance.Archive = "archive"
+
+	Options.ActivityItemRelevance.Low = "low"
+
+	Options.ActivityItemRelevance.Normal = "normal"
+
+	Options.ActivityItemRelevance.High = "high"
 
 	Options.ActivityQueryOrderDirection.ASC = "ASC"
 
@@ -4573,35 +9624,123 @@ func init() {
 
 	Options.AssignRoleRequestRole.Observer = "observer"
 
-	Options.CreateIncidentRequestSeverity.Pending = "pending"
+	Options.AttachmentFileType.File = "file"
 
-	Options.CreateIncidentRequestSeverity.Minor = "minor"
+	Options.AttachmentFileType.Video = "video"
 
-	Options.CreateIncidentRequestSeverity.Major = "major"
+	Options.AttachmentFileType.Image = "image"
 
-	Options.CreateIncidentRequestSeverity.Critical = "critical"
+	Options.AttachmentFileType.Audio = "audio"
+
+	Options.AttachmentFileType.Screenshare = "screenshare"
+
+	Options.AttachmentDisplayType.List = "list"
+
+	Options.AttachmentDisplayType.Embed = "embed"
 
 	Options.CreateIncidentRequestStatus.Active = "active"
 
 	Options.CreateIncidentRequestStatus.Resolved = "resolved"
 
-	Options.IncidentSeverity.Pending = "pending"
+	Options.CustomMetadataFieldType.String = "string"
 
-	Options.IncidentSeverity.Minor = "minor"
+	Options.CustomMetadataFieldType.SingleSelect = "single-select"
 
-	Options.IncidentSeverity.Major = "major"
+	Options.CustomMetadataFieldType.MultiSelect = "multi-select"
 
-	Options.IncidentSeverity.Critical = "critical"
+	Options.CustomMetadataFieldType.Bool = "bool"
+
+	Options.CustomMetadataFieldType.Number = "number"
+
+	Options.CustomMetadataFieldType.Date = "date"
+
+	Options.CustomMetadataFieldDomainName.Labels = "labels"
+
+	Options.CustomMetadataFieldDomainName.Incident = "incident"
+
+	Options.EnableHookRequestEventName.IncidentCreated = "incidentCreated"
+
+	Options.EnableHookRequestEventName.IncidentDeleted = "incidentDeleted"
+
+	Options.EnableHookRequestEventName.IncidentUpdated = "incidentUpdated"
+
+	Options.EnableHookRequestEventName.IncidentClosed = "incidentClosed"
+
+	Options.EnableHookRequestEventName.ManuallyTriggered = "manuallyTriggered"
+
+	Options.EnableHookRequestEventName.IncidentFilter = "incidentFilter"
+
+	Options.FieldType.String = "string"
+
+	Options.FieldType.StringGrafanaAPIKeyViewer = "string[grafana.apiKey:viewer]"
+
+	Options.FieldType.StringGrafanaAPIKeyAdmin = "string[grafana.apiKey:admin]"
+
+	Options.FieldType.Bool = "bool"
+
+	Options.GetFieldValuesRequestTargetKind.Incident = "incident"
+
+	Options.HookRunEventName.IncidentCreated = "incidentCreated"
+
+	Options.HookRunEventName.IncidentDeleted = "incidentDeleted"
+
+	Options.HookRunEventName.IncidentUpdated = "incidentUpdated"
+
+	Options.HookRunEventName.IncidentClosed = "incidentClosed"
+
+	Options.HookRunEventName.ManuallyTriggered = "manuallyTriggered"
+
+	Options.HookRunEventName.IncidentFilter = "incidentFilter"
+
+	Options.HookRunUpdateStatus.Todo = "todo"
+
+	Options.HookRunUpdateStatus.Success = "success"
+
+	Options.HookRunUpdateStatus.Failed = "failed"
+
+	Options.HookRunStatus.Todo = "todo"
+
+	Options.HookRunStatus.Success = "success"
+
+	Options.HookRunStatus.Failed = "failed"
 
 	Options.IncidentStatus.Active = "active"
 
 	Options.IncidentStatus.Resolved = "resolved"
 
-	Options.IncidentRoleRole.Commander = "commander"
+	Options.IncidentPreviewIncidentType.Internal = "internal"
 
-	Options.IncidentRoleRole.Investigator = "investigator"
+	Options.IncidentPreviewIncidentType.Private = "private"
 
-	Options.IncidentRoleRole.Observer = "observer"
+	Options.IncidentPreviewStatus.Active = "active"
+
+	Options.IncidentPreviewStatus.Resolved = "resolved"
+
+	Options.IncidentPreviewsQueryOrderDirection.ASC = "ASC"
+
+	Options.IncidentPreviewsQueryOrderDirection.DESC = "DESC"
+
+	Options.IncidentPreviewsQueryOrderField.IncidentID = "incidentID"
+
+	Options.IncidentPreviewsQueryOrderField.CreatedTime = "createdTime"
+
+	Options.IncidentPreviewsQueryOrderField.ModifiedTime = "modifiedTime"
+
+	Options.IncidentPreviewsQueryOrderField.Title = "title"
+
+	Options.IncidentPreviewsQueryOrderField.Status = "status"
+
+	Options.IncidentPreviewsQueryOrderField.Severity = "severity"
+
+	Options.IncidentPreviewsQueryOrderField.Prefix = "prefix"
+
+	Options.IncidentPreviewsQueryOrderField.IsDrill = "isDrill"
+
+	Options.IncidentPreviewsQueryOrderField.IncidentStart = "incidentStart"
+
+	Options.IncidentPreviewsQueryOrderField.IncidentEnd = "incidentEnd"
+
+	Options.IncidentPreviewsQueryOrderField.ClosedTime = "closedTime"
 
 	Options.IncidentsQueryIncludeStatuses.Active = "active"
 
@@ -4627,17 +9766,23 @@ func init() {
 
 	Options.UnassignRoleRequestRole.Observer = "observer"
 
+	Options.UpdateActivityRelevanceRequestRelevance.Automatic = "automatic"
+
+	Options.UpdateActivityRelevanceRequestRelevance.Archive = "archive"
+
+	Options.UpdateActivityRelevanceRequestRelevance.Low = "low"
+
+	Options.UpdateActivityRelevanceRequestRelevance.Normal = "normal"
+
+	Options.UpdateActivityRelevanceRequestRelevance.High = "high"
+
 	Options.UpdateIncidentEventTimeRequestActivityItemKind.IncidentEnd = "incidentEnd"
 
 	Options.UpdateIncidentEventTimeRequestActivityItemKind.IncidentStart = "incidentStart"
 
-	Options.UpdateSeverityRequestSeverity.Pending = "pending"
+	Options.UpdateIncidentEventTimeRequestEventName.IncidentEnd = "incidentEnd"
 
-	Options.UpdateSeverityRequestSeverity.Minor = "minor"
-
-	Options.UpdateSeverityRequestSeverity.Major = "major"
-
-	Options.UpdateSeverityRequestSeverity.Critical = "critical"
+	Options.UpdateIncidentEventTimeRequestEventName.IncidentStart = "incidentStart"
 
 	Options.UpdateStatusRequestStatus.Active = "active"
 
