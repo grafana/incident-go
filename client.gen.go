@@ -556,7 +556,7 @@ type CustomMetadataField struct {
 	// DomainName is scope for which the field is valid/used.
 	DomainName string `json:"domainName"`
 
-	// SelectOptions is the list of select options for the field. Only used for select
+	// Selectoptions is the list of select options for the field. Only used for select
 	// fields.
 	Selectoptions []CustomMetadataFieldSelectOption `json:"selectoptions"`
 
@@ -571,6 +571,9 @@ type CustomMetadataField struct {
 	// Archived is whether this field is archived. Archived fields are not allowed to
 	// be used in the new incidents. But the historical data is still kept.
 	Archived bool `json:"archived"`
+
+	// Version is the field version.
+	Version int `json:"version"`
 }
 
 // CustomMetadataFieldSelectOption is a select option for a select field.
@@ -718,6 +721,26 @@ type EnableHookResponse struct {
 	EnabledHookID string `json:"enabledHookID"`
 }
 
+// EnabledHook is a Hook that has been wired up to an event.
+type EnabledHook struct {
+
+	// IntegrationID is the identifier of the Integration that the Hook belongs to.
+	IntegrationID string `json:"integrationID"`
+
+	// EnabledHookID is the unique identifier of the enabled hook.
+	EnabledHookID string `json:"enabledHookID"`
+
+	// EventName is the name of the event that this hook is wired up to.
+	EventName string `json:"eventName"`
+
+	// Hook is the enabled Hook.
+	Hook Hook `json:"hook"`
+
+	// Sensitive is true if the hook run should be triggered when the incident is
+	// private. Ensures that hooks are not triggered for private incidents by default.
+	Sensitive bool `json:"sensitive"`
+}
+
 // Field represents a key/value pair, with additional metadata. Fields are used to
 // represent dynamic data structures.
 type Field struct {
@@ -755,6 +778,21 @@ type FieldValue struct {
 	// Value is the json encoded value of the field to record. If empty, the field
 	// value will be set unset.
 	Value string `json:"value"`
+}
+
+// GetEnabledHooksRequest is the request for the GetEnabledHooks method.
+type GetEnabledHooksRequest struct {
+
+	// EventName is the name of the event that triggered the Hook to run. If provided,
+	// only Hooks that are enabled for this event will be returned.
+	EventName string `json:"eventName"`
+}
+
+// GetEnabledHooksResponse is the response for the GetEnabledHooks method.
+type GetEnabledHooksResponse struct {
+
+	// EnabledHooks is the complete list of enabled hooks.
+	EnabledHooks []EnabledHook `json:"enabledHooks"`
 }
 
 // GetFieldRequest is the request struct for api GetField method.
@@ -916,6 +954,19 @@ type GetUserResponse struct {
 
 	// User is the user
 	User User `json:"user"`
+}
+
+// Hook describes an updatable method that may be wired up to events.
+type Hook struct {
+
+	// HookID is the identifier for this Hook.
+	HookID string `json:"hookID"`
+
+	// Name is the name of this Hook.
+	Name string `json:"name"`
+
+	// Description is a brief overview of what the hook does.
+	Description string `json:"description"`
 }
 
 // HookConfig holds configuration fields for a Hook.
@@ -1676,6 +1727,13 @@ type UpdateFieldRequest struct {
 
 	// Immutable indicates if the field can by modified by the user.
 	Immutable bool `json:"immutable"`
+
+	// Selectoptions is the list of select options for the field. Only used for select
+	// fields.
+	Selectoptions []CustomMetadataFieldSelectOption `json:"selectoptions"`
+
+	// Version is the field version.
+	Version int `json:"version"`
 }
 
 // UpdateFieldResponse is the response from the UpdateField method.
@@ -4502,6 +4560,68 @@ func (s *IntegrationService) EnableHook(ctx context.Context, r EnableHookRequest
 	return &response.EnableHookResponse, nil
 }
 
+// GetEnabledHooks gets a list of all enabled Hooks.
+func (s *IntegrationService) GetEnabledHooks(ctx context.Context, r GetEnabledHooksRequest) (*GetEnabledHooksResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetEnabledHooks()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: marshal GetEnabledHooksRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IntegrationService.GetEnabledHooks"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetEnabledHooksResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetEnabledHooksResponse, nil
+}
+
 // GetHookRuns gets a list of HookRuns for a given Incident.
 func (s *IntegrationService) GetHookRuns(ctx context.Context, r GetHookRunsRequest) (*GetHookRunsResponse, error) {
 	if s.client.stubmode {
@@ -6006,7 +6126,8 @@ func (s *FieldsService) stubAddField() (*AddFieldResponse, error) {
 		"slug": "field_slug",
 		"source": "incident",
 		"type": "string",
-		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+		"version": "1"
 	}
 }`
 	var dest AddFieldResponse
@@ -6066,7 +6187,8 @@ func (s *FieldsService) stubAddLabelKey() (*AddLabelKeyResponse, error) {
 		"slug": "field_slug",
 		"source": "incident",
 		"type": "string",
-		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+		"version": "1"
 	}
 }`
 	var dest AddLabelKeyResponse
@@ -6114,7 +6236,8 @@ func (s *FieldsService) stubAddLabelValue() (*AddLabelValueResponse, error) {
 		"slug": "field_slug",
 		"source": "incident",
 		"type": "string",
-		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+		"version": "1"
 	}
 }`
 	var dest AddLabelValueResponse
@@ -6195,7 +6318,8 @@ func (s *FieldsService) stubGetField() (*GetFieldResponse, error) {
 		"slug": "field_slug",
 		"source": "incident",
 		"type": "string",
-		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+		"version": "1"
 	}
 }`
 	var dest GetFieldResponse
@@ -6245,7 +6369,8 @@ func (s *FieldsService) stubGetFieldValues() (*GetFieldValuesResponse, error) {
 				"slug": "field_slug",
 				"source": "incident",
 				"type": "string",
-				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"version": "1"
 			},
 			"value": "value"
 		},
@@ -6285,7 +6410,8 @@ func (s *FieldsService) stubGetFieldValues() (*GetFieldValuesResponse, error) {
 				"slug": "field_slug",
 				"source": "incident",
 				"type": "string",
-				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+				"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+				"version": "1"
 			},
 			"value": "value"
 		}
@@ -6337,7 +6463,8 @@ func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
 			"slug": "field_slug",
 			"source": "incident",
 			"type": "string",
-			"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+			"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"version": "1"
 		},
 		{
 			"archived": "false",
@@ -6374,7 +6501,8 @@ func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
 			"slug": "field_slug",
 			"source": "incident",
 			"type": "string",
-			"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+			"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+			"version": "1"
 		}
 	]
 }`
@@ -6434,7 +6562,8 @@ func (s *FieldsService) stubUpdateField() (*UpdateFieldResponse, error) {
 		"slug": "field_slug",
 		"source": "incident",
 		"type": "string",
-		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f"
+		"uuid": "3fb1e5d7-3ef2-11ef-b731-deab26f9180f",
+		"version": "1"
 	}
 }`
 	var dest UpdateFieldResponse
@@ -7540,14 +7669,16 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 		"dateFrom": "2021-01-01T02:07:14+00:00",
 		"dateTo": "2021-01-01T02:07:14+00:00",
 		"excludeStatuses": [
-			"closed"
+			"active",
+			"resolved"
 		],
 		"incidentLabels": [
 			"security",
 			"customersaffected"
 		],
 		"includeStatuses": [
-			"active"
+			"active",
+			"resolved"
 		],
 		"limit": 10,
 		"onlyDrills": true,
@@ -8448,6 +8579,41 @@ func (s *IntegrationService) stubEnableHook() (*EnableHookResponse, error) {
 	return &dest, nil
 }
 
+func (s *IntegrationService) stubGetEnabledHooks() (*GetEnabledHooksResponse, error) {
+	exampleJSON := `{
+	"enabledHooks": [
+		{
+			"enabledHookID": "enabled-hook-123",
+			"eventName": "incidentCreated",
+			"hook": {
+				"description": "A brief description of this Hook.",
+				"hookID": "hook-123",
+				"name": "Hook Name"
+			},
+			"integrationID": "integration-123",
+			"sensitive": true
+		},
+		{
+			"enabledHookID": "enabled-hook-123",
+			"eventName": "incidentCreated",
+			"hook": {
+				"description": "A brief description of this Hook.",
+				"hookID": "hook-123",
+				"name": "Hook Name"
+			},
+			"integrationID": "integration-123",
+			"sensitive": true
+		}
+	],
+	"error": "something went wrong"
+}`
+	var dest GetEnabledHooksResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetEnabledHooks: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 func (s *IntegrationService) stubGetHookRuns() (*GetHookRunsResponse, error) {
 	exampleJSON := `{
 	"error": "something went wrong",
@@ -9261,6 +9427,29 @@ var Options struct {
 		IncidentFilter string
 	}
 
+	// EnabledHookEventName contains the acceptable values for the
+	// EnabledHook.EventName field.
+	EnabledHookEventName struct {
+
+		// IncidentCreated == "incidentCreated"
+		IncidentCreated string
+
+		// IncidentDeleted == "incidentDeleted"
+		IncidentDeleted string
+
+		// IncidentUpdated == "incidentUpdated"
+		IncidentUpdated string
+
+		// IncidentClosed == "incidentClosed"
+		IncidentClosed string
+
+		// ManuallyTriggered == "manuallyTriggered"
+		ManuallyTriggered string
+
+		// IncidentFilter == "incidentFilter"
+		IncidentFilter string
+	}
+
 	// FieldType contains the acceptable values for the
 	// Field.Type field.
 	FieldType struct {
@@ -9417,28 +9606,6 @@ var Options struct {
 
 		// ClosedTime == "closedTime"
 		ClosedTime string
-	}
-
-	// IncidentsQueryIncludeStatuses contains the acceptable values for the
-	// IncidentsQuery.IncludeStatuses field.
-	IncidentsQueryIncludeStatuses struct {
-
-		// Active == "active"
-		Active string
-
-		// Resolved == "resolved"
-		Resolved string
-	}
-
-	// IncidentsQueryExcludeStatuses contains the acceptable values for the
-	// IncidentsQuery.ExcludeStatuses field.
-	IncidentsQueryExcludeStatuses struct {
-
-		// Active == "active"
-		Active string
-
-		// Resolved == "resolved"
-		Resolved string
 	}
 
 	// IncidentsQueryOrderDirection contains the acceptable values for the
@@ -9670,6 +9837,18 @@ func init() {
 
 	Options.EnableHookRequestEventName.IncidentFilter = "incidentFilter"
 
+	Options.EnabledHookEventName.IncidentCreated = "incidentCreated"
+
+	Options.EnabledHookEventName.IncidentDeleted = "incidentDeleted"
+
+	Options.EnabledHookEventName.IncidentUpdated = "incidentUpdated"
+
+	Options.EnabledHookEventName.IncidentClosed = "incidentClosed"
+
+	Options.EnabledHookEventName.ManuallyTriggered = "manuallyTriggered"
+
+	Options.EnabledHookEventName.IncidentFilter = "incidentFilter"
+
 	Options.FieldType.String = "string"
 
 	Options.FieldType.StringGrafanaAPIKeyViewer = "string[grafana.apiKey:viewer]"
@@ -9741,14 +9920,6 @@ func init() {
 	Options.IncidentPreviewsQueryOrderField.IncidentEnd = "incidentEnd"
 
 	Options.IncidentPreviewsQueryOrderField.ClosedTime = "closedTime"
-
-	Options.IncidentsQueryIncludeStatuses.Active = "active"
-
-	Options.IncidentsQueryIncludeStatuses.Resolved = "resolved"
-
-	Options.IncidentsQueryExcludeStatuses.Active = "active"
-
-	Options.IncidentsQueryExcludeStatuses.Resolved = "resolved"
 
 	Options.IncidentsQueryOrderDirection.ASC = "ASC"
 
