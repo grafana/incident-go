@@ -42,7 +42,7 @@ type Client struct {
 }
 
 // NewClient makes a new Client.
-// The remoteHost should be "https://your-stack.grafana.net/api/plugins/grafana-incident-app/resources/api/v1"
+// The remoteHost should be "https://your-stack.grafana.net/api/plugins/grafana-irm-app/resources/api/v1"
 // with `your-stack.grafana.net` pointing to your instance.
 // The serviceAccountToken can be obtained from the Configuration via the web app
 // (For more information, see https://grafana.com/docs/grafana-cloud/incident/api/rpc/auth/).
@@ -153,6 +153,10 @@ type AddActivityRequest struct {
 	// Body is a human readable description of the ActivityItem. URLs mentioned will be
 	// parsed and attached as context.
 	Body string `json:"body"`
+
+	// FieldValues is an object of field values associated with the ActivityItem.
+	// The structure is determined by the ActivityKind.
+	FieldValues map[string]interface{} `json:"fieldValues"`
 
 	// EventTime is the time when the event occurred. If empty, the current time is
 	// used. The string value format should follow RFC 3339.
@@ -270,7 +274,7 @@ type AddTaskRequest struct {
 	// Text is the todo item.
 	Text string `json:"text"`
 
-	// AssignToUserId is the user the task wil be assigned to
+	// AssignToUserId is the user the task will be assigned to
 	AssignToUserId string `json:"assignToUserID"`
 }
 
@@ -485,6 +489,9 @@ type CreateIncidentRequest struct {
 
 	// AttachURLis the associated URL.
 	AttachURL string `json:"attachURL"`
+
+	// AlertGroupID is the identifier of the alert group associated with this incident.
+	AlertGroupID *string `json:"alertGroupID"`
 }
 
 // CreateIncidentResponse is the response for the CreateIncident method.
@@ -492,6 +499,41 @@ type CreateIncidentResponse struct {
 
 	// Incident is the Incident that was created.
 	Incident Incident `json:"incident"`
+}
+
+// CreateKeyUpdateRequest is the request for the CreateKeyUpdate method.
+type CreateKeyUpdateRequest struct {
+
+	// IncidentID is the identifier of the incident.
+	IncidentID string `json:"incidentID"`
+
+	// Title is a short summary of the key update.
+	Title *string `json:"title"`
+
+	// Content provides detailed information about the key update.
+	Content string `json:"content"`
+
+	// ContentType specifies the format of the content.
+	ContentType string `json:"contentType"`
+
+	// StatusID references the incident status at the time of this update.
+	StatusID string `json:"statusID"`
+
+	// SeverityID references the incident severity at the time of this update.
+	SeverityID string `json:"severityID"`
+
+	// Scope specifies the audience or visibility of this key update.
+	Scope string `json:"scope"`
+
+	// Color is the color of the key update.
+	Color *string `json:"color"`
+}
+
+// CreateKeyUpdateResponse is the response for the CreateKeyUpdate method.
+type CreateKeyUpdateResponse struct {
+
+	// KeyUpdate is the newly created key update.
+	KeyUpdate KeyUpdate `json:"keyUpdate"`
 }
 
 // CreateRoleRequest is the request to create a role.
@@ -643,6 +685,20 @@ type DeleteFieldSelectOptionRequest struct {
 type DeleteFieldSelectOptionResponse struct {
 }
 
+// DeleteKeyUpdateRequest is the request for the DeleteKeyUpdate method.
+type DeleteKeyUpdateRequest struct {
+
+	// ID is the identifier of the key update to delete.
+	ID string `json:"id"`
+
+	// IncidentID is the identifier of the incident.
+	IncidentID string `json:"incidentID"`
+}
+
+// DeleteKeyUpdateResponse is the response for the DeleteKeyUpdate method.
+type DeleteKeyUpdateResponse struct {
+}
+
 // DeleteRoleRequest is the request to delete a role.
 type DeleteRoleRequest struct {
 
@@ -735,6 +791,10 @@ type EnabledHook struct {
 
 	// Hook is the enabled Hook.
 	Hook Hook `json:"hook"`
+
+	// IncidentFilter is the filter that determines if a hook with the 'incidentFilter'
+	// event will be triggered.
+	IncidentFilter string `json:"incidentFilter"`
 
 	// Sensitive is true if the hook run should be triggered when the incident is
 	// private. Ensures that hooks are not triggered for private incidents by default.
@@ -915,6 +975,43 @@ type GetIncidentVersionResponse struct {
 	Version int `json:"version"`
 }
 
+// GetInitialKeyUpdateRequest is the request for the GetInitialKeyUpdate method.
+type GetInitialKeyUpdateRequest struct {
+
+	// IncidentID is the identifier of the incident.
+	IncidentID string `json:"incidentID"`
+
+	// ContentType specifies the desired format for the content field in the response.
+	ContentType string `json:"contentType"`
+}
+
+// GetInitialKeyUpdateResponse is the response for the GetInitialKeyUpdate method.
+type GetInitialKeyUpdateResponse struct {
+
+	// KeyUpdate is the initial key update for the incident.
+	KeyUpdate *KeyUpdate `json:"keyUpdate"`
+}
+
+// GetKeyUpdateRequest is the request for the GetKeyUpdate method.
+type GetKeyUpdateRequest struct {
+
+	// IncidentID is the identifier of the incident.
+	IncidentID string `json:"incidentID"`
+
+	// ID is the identifier of the key update to retrieve.
+	ID string `json:"id"`
+
+	// ContentType specifies the desired format for the content field in the response.
+	ContentType string `json:"contentType"`
+}
+
+// GetKeyUpdateResponse is the response for the GetKeyUpdate method.
+type GetKeyUpdateResponse struct {
+
+	// KeyUpdate is the requested key update.
+	KeyUpdate KeyUpdate `json:"keyUpdate"`
+}
+
 // GetLabelsRequest is the request for the GetLabels method.
 type GetLabelsRequest struct {
 
@@ -927,6 +1024,26 @@ type GetLabelsResponse struct {
 
 	// Labels is a list of labels
 	Labels []IncidentKeyValueLabel `json:"labels"`
+}
+
+// GetLastKeyUpdateRequest is the request for the GetLastKeyUpdate method.
+type GetLastKeyUpdateRequest struct {
+
+	// IncidentID is the identifier of the incident.
+	IncidentID string `json:"incidentID"`
+
+	// ContentType specifies the desired format for the content field in the response.
+	ContentType string `json:"contentType"`
+}
+
+// GetLastKeyUpdateResponse is the response for the GetLastKeyUpdate method.
+type GetLastKeyUpdateResponse struct {
+
+	// KeyUpdate is the last key update for the incident.
+	KeyUpdate *KeyUpdate `json:"keyUpdate"`
+
+	// Number of other key updates for this incident.
+	KeyUpdateCount int `json:"keyUpdateCount"`
 }
 
 // GetRolesRequest is the request to get all roles.
@@ -1032,6 +1149,9 @@ type Incident struct {
 
 	// IncidentID is the identifier.
 	IncidentID string `json:"incidentID"`
+
+	// Refs represent associated IDs in third-party systems.
+	Refs []IncidentRef `json:"refs"`
 
 	// Severity expresses how bad the Incident is.
 	Severity string `json:"severity"`
@@ -1252,6 +1372,21 @@ type IncidentPreviewsQuery struct {
 	QueryString string `json:"queryString"`
 }
 
+// IncidentRef represents a reference to a third-party system.
+type IncidentRef struct {
+
+	// Key is a globally unique identifier for the third-party in reverse domain name
+	// notation.
+	Key string `json:"key"`
+
+	// Ref is the reference string.
+	Ref string `json:"ref"`
+
+	// URL is the browser address of the incident in the third-party system. Can be
+	// empty.
+	URL string `json:"url"`
+}
+
 // IncidentsQuery is the query for the QueryIncidentsRequest.
 type IncidentsQuery struct {
 
@@ -1306,6 +1441,78 @@ type IncomingWebhookResponse struct {
 	// But you should check to make sure everything was successfully processed before
 	// shipping to production.
 	ProcessingErrors []string `json:"processingErrors"`
+}
+
+// KeyUpdate represents a significant update or milestone in an incident's
+// lifecycle.
+type KeyUpdate struct {
+
+	// ID is the unique identifier for this key update.
+	ID string `json:"id"`
+
+	// OrgID is the identifier of the organization this key update belongs to.
+	OrgID string `json:"orgID"`
+
+	// IncidentID is the identifier of the incident this update belongs to.
+	IncidentID string `json:"incidentID"`
+
+	// Title is a short summary of the key update.
+	Title *string `json:"title"`
+
+	// Content provides detailed information about the key update.
+	Content string `json:"content"`
+
+	// ContentType specifies the format of the content.
+	ContentType string `json:"contentType"`
+
+	// CreatedTime is when this key update was created. The string value format should
+	// follow RFC 3339.
+	CreatedTime string `json:"createdTime"`
+
+	// ModifiedTime is when this key update was last modified. The string value format
+	// should follow RFC 3339.
+	ModifiedTime string `json:"modifiedTime"`
+
+	// Author is the user who created this key update.
+	CreatedBy UserPreview `json:"createdBy"`
+
+	// LastEditor is the user who last modified this key update.
+	LastModifiedBy UserPreview `json:"lastModifiedBy"`
+
+	// StatusID references the incident status at the time of this update.
+	StatusID string `json:"statusID"`
+
+	// SeverityID references the incident severity at the time of this update.
+	SeverityID string `json:"severityID"`
+
+	// Scope specifies the audience or visibility of this key update.
+	Scope string `json:"scope"`
+
+	// Color is the color of the key update.
+	Color *string `json:"color"`
+}
+
+// KeyUpdatesQuery describes the query parameters for listing key updates.
+type KeyUpdatesQuery struct {
+
+	// IncidentID is the identifier of the incident.
+	IncidentID string `json:"incidentID"`
+
+	// Limit is the maximum number of key updates to return.
+	Limit int `json:"limit"`
+
+	// OrderDirection is the direction to order the results.
+	OrderDirection string `json:"orderDirection"`
+
+	// OrderField is the field to order the results by. If empty, defaults to
+	// 'createdTime'.
+	OrderField string `json:"orderField"`
+
+	// Scope filters key updates by their scope.
+	Scope string `json:"scope"`
+
+	// ContentType specifies the desired format for the content field in the response.
+	ContentType string `json:"contentType"`
 }
 
 // OutgoingWebhookPayload represents the webhook HTTP POST body and contains
@@ -1408,6 +1615,30 @@ type QueryIncidentsResponse struct {
 
 	// Query is the query that was used to generate this response.
 	Query IncidentsQuery `json:"query"`
+
+	// Cursor should be passed back to get the next page of results.
+	Cursor Cursor `json:"cursor"`
+}
+
+// QueryKeyUpdatesRequest is the request for the QueryKeyUpdates method.
+type QueryKeyUpdatesRequest struct {
+
+	// Query describes the query parameters.
+	Query KeyUpdatesQuery `json:"query"`
+
+	// Cursor is used for pagination. Empty for the first page. For subsequent pages,
+	// use previously returned Cursor values.
+	Cursor Cursor `json:"cursor"`
+}
+
+// QueryKeyUpdatesResponse is the response for the QueryKeyUpdates method.
+type QueryKeyUpdatesResponse struct {
+
+	// KeyUpdates is the list of key updates matching the query.
+	KeyUpdates []KeyUpdate `json:"keyUpdates"`
+
+	// Query is the query that was used to generate this response.
+	Query KeyUpdatesQuery `json:"query"`
 
 	// Cursor should be passed back to get the next page of results.
 	Cursor Cursor `json:"cursor"`
@@ -1815,6 +2046,44 @@ type UpdateIncidentIsDrillResponse struct {
 
 	// Incident is the Incident that was just modified.
 	Incident Incident `json:"incident"`
+}
+
+// UpdateKeyUpdateRequest is the request for the UpdateKeyUpdate method.
+type UpdateKeyUpdateRequest struct {
+
+	// IncidentID is the identifier of the incident.
+	IncidentID string `json:"incidentID"`
+
+	// ID is the identifier of the key update to modify.
+	ID string `json:"id"`
+
+	// Title is the new title for the key update.
+	Title *string `json:"title"`
+
+	// Content is the new content for the key update.
+	Content string `json:"content"`
+
+	// ContentType specifies the format of the content.
+	ContentType string `json:"contentType"`
+
+	// StatusID references the incident status at the time of this update.
+	StatusID string `json:"statusID"`
+
+	// SeverityID references the incident severity at the time of this update.
+	SeverityID string `json:"severityID"`
+
+	// Scope specifies the audience or visibility of this key update.
+	Scope string `json:"scope"`
+
+	// Color is the color of the key update.
+	Color *string `json:"color"`
+}
+
+// UpdateKeyUpdateResponse is the response for the UpdateKeyUpdate method.
+type UpdateKeyUpdateResponse struct {
+
+	// KeyUpdate is the modified key update.
+	KeyUpdate KeyUpdate `json:"keyUpdate"`
 }
 
 // UpdateRoleRequest is the request to update a role.
@@ -3229,7 +3498,7 @@ func (s *FieldsService) UpdateFieldSelectOption(ctx context.Context, r UpdateFie
 }
 
 // IncidentsService provides the ability to query, get, declare (create), update,
-// and manage Incidents programatically. You can also assign roles and update
+// and manage Incidents programmatically. You can also assign roles and update
 // labels.
 // Get one by calling NewIncidentsService.
 type IncidentsService struct {
@@ -4684,8 +4953,457 @@ func (s *IntegrationService) GetHookRuns(ctx context.Context, r GetHookRunsReque
 	return &response.GetHookRunsResponse, nil
 }
 
+// KeyUpdatesService provides functionality to manage key updates for incidents.
+// Key updates represent significant milestones or critical updates during an
+// incident's lifecycle.
+// Get one by calling NewKeyUpdatesService.
+type KeyUpdatesService struct {
+	client *Client
+}
+
+// NewKeyUpdatesService gets a new KeyUpdatesService.
+func NewKeyUpdatesService(client *Client) *KeyUpdatesService {
+	return &KeyUpdatesService{
+		client: client,
+	}
+}
+
+// CreateKeyUpdate creates a new key update for an incident.
+func (s *KeyUpdatesService) CreateKeyUpdate(ctx context.Context, r CreateKeyUpdateRequest) (*CreateKeyUpdateResponse, error) {
+	if s.client.stubmode {
+		return s.stubCreateKeyUpdate()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: marshal CreateKeyUpdateRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "KeyUpdatesService.CreateKeyUpdate"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		CreateKeyUpdateResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.CreateKeyUpdateResponse, nil
+}
+
+// DeleteKeyUpdate removes a key update.
+func (s *KeyUpdatesService) DeleteKeyUpdate(ctx context.Context, r DeleteKeyUpdateRequest) (*DeleteKeyUpdateResponse, error) {
+	if s.client.stubmode {
+		return s.stubDeleteKeyUpdate()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: marshal DeleteKeyUpdateRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "KeyUpdatesService.DeleteKeyUpdate"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		DeleteKeyUpdateResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.DeleteKeyUpdateResponse, nil
+}
+
+// GetInitialKeyUpdate gets the initial key update for an incident.
+func (s *KeyUpdatesService) GetInitialKeyUpdate(ctx context.Context, r GetInitialKeyUpdateRequest) (*GetInitialKeyUpdateResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetInitialKeyUpdate()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: marshal GetInitialKeyUpdateRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "KeyUpdatesService.GetInitialKeyUpdate"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetInitialKeyUpdateResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetInitialKeyUpdateResponse, nil
+}
+
+// GetKeyUpdate retrieves a specific key update.
+func (s *KeyUpdatesService) GetKeyUpdate(ctx context.Context, r GetKeyUpdateRequest) (*GetKeyUpdateResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetKeyUpdate()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: marshal GetKeyUpdateRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "KeyUpdatesService.GetKeyUpdate"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetKeyUpdateResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetKeyUpdateResponse, nil
+}
+
+// GetLastKeyUpdate gets the last key update for an incident.
+func (s *KeyUpdatesService) GetLastKeyUpdate(ctx context.Context, r GetLastKeyUpdateRequest) (*GetLastKeyUpdateResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetLastKeyUpdate()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: marshal GetLastKeyUpdateRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "KeyUpdatesService.GetLastKeyUpdate"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetLastKeyUpdateResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetLastKeyUpdateResponse, nil
+}
+
+// QueryKeyUpdates gets a list of key updates with pagination support.
+func (s *KeyUpdatesService) QueryKeyUpdates(ctx context.Context, r QueryKeyUpdatesRequest) (*QueryKeyUpdatesResponse, error) {
+	if s.client.stubmode {
+		return s.stubQueryKeyUpdates()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: marshal QueryKeyUpdatesRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "KeyUpdatesService.QueryKeyUpdates"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		QueryKeyUpdatesResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.QueryKeyUpdatesResponse, nil
+}
+
+// UpdateKeyUpdate modifies an existing key update.
+func (s *KeyUpdatesService) UpdateKeyUpdate(ctx context.Context, r UpdateKeyUpdateRequest) (*UpdateKeyUpdateResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateKeyUpdate()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: marshal UpdateKeyUpdateRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "KeyUpdatesService.UpdateKeyUpdate"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateKeyUpdateResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UpdateKeyUpdateResponse, nil
+}
+
 // RolesService defines the interface for interacting with roles, providing CRUD
-// operations and more fatures related to roles.
+// operations and more features related to roles.
 // Get one by calling NewRolesService.
 type RolesService struct {
 	client *Client
@@ -6660,7 +7378,19 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -6851,7 +7581,19 @@ func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -6983,7 +7725,19 @@ func (s *IncidentsService) stubCreateIncident() (*CreateIncidentResponse, error)
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -7115,7 +7869,19 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -7495,7 +8261,19 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 				}
 			],
 			"modifiedTime": "2021-08-07T11:58:23Z",
-			"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+			"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+			"refs": [
+				{
+					"key": "com.grafana.oncall",
+					"ref": "abc123",
+					"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+				},
+				{
+					"key": "com.grafana.oncall",
+					"ref": "abc123",
+					"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+				}
+			],
 			"severity": "minor",
 			"status": "active",
 			"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -7616,7 +8394,19 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 				}
 			],
 			"modifiedTime": "2021-08-07T11:58:23Z",
-			"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+			"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+			"refs": [
+				{
+					"key": "com.grafana.oncall",
+					"ref": "abc123",
+					"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+				},
+				{
+					"key": "com.grafana.oncall",
+					"ref": "abc123",
+					"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+				}
+			],
 			"severity": "minor",
 			"status": "active",
 			"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -7770,7 +8560,19 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -7961,7 +8763,19 @@ func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -8104,7 +8918,19 @@ func (s *IncidentsService) stubUpdateIncidentIsDrill() (*UpdateIncidentIsDrillRe
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -8236,7 +9062,19 @@ func (s *IncidentsService) stubUpdateSeverity() (*UpdateSeverityResponse, error)
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -8368,7 +9206,19 @@ func (s *IncidentsService) stubUpdateStatus() (*UpdateStatusResponse, error) {
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -8500,7 +9350,19 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 			}
 		],
 		"modifiedTime": "2021-08-07T11:58:23Z",
-		"overviewURL": "/a/grafana-incident-app/incidents/incident-123/title",
+		"overviewURL": "/a/grafana-irm-app/incidents/incident-123/title",
+		"refs": [
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			},
+			{
+				"key": "com.grafana.oncall",
+				"ref": "abc123",
+				"url": "https://grafana.com/a/grafana-irm-app/incidents/456"
+			}
+		],
 		"severity": "minor",
 		"status": "active",
 		"summary": "Something happened, we found out something interesting, then we fixed it.",
@@ -8590,6 +9452,7 @@ func (s *IntegrationService) stubGetEnabledHooks() (*GetEnabledHooksResponse, er
 				"hookID": "hook-123",
 				"name": "Hook Name"
 			},
+			"incidentFilter": "isdrill:true",
 			"integrationID": "integration-123",
 			"sensitive": true
 		},
@@ -8601,6 +9464,7 @@ func (s *IntegrationService) stubGetEnabledHooks() (*GetEnabledHooksResponse, er
 				"hookID": "hook-123",
 				"name": "Hook Name"
 			},
+			"incidentFilter": "isdrill:true",
 			"integrationID": "integration-123",
 			"sensitive": true
 		}
@@ -8659,6 +9523,266 @@ func (s *IntegrationService) stubGetHookRuns() (*GetHookRunsResponse, error) {
 	var dest GetHookRunsResponse
 	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
 		return nil, fmt.Errorf("stubGetHookRuns: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *KeyUpdatesService) stubCreateKeyUpdate() (*CreateKeyUpdateResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"keyUpdate": {
+		"color": "#000000",
+		"content": "Database connection pool exhaustion identified as root cause",
+		"contentType": "text/plain",
+		"createdBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2021-08-07T11:58:23Z",
+		"id": "keyupdate-123",
+		"incidentID": "incident-123",
+		"lastModifiedBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"orgID": "org-123",
+		"scope": "internal",
+		"severityID": "severity-123",
+		"statusID": "status-123",
+		"title": "Root cause identified"
+	}
+}`
+	var dest CreateKeyUpdateResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubCreateKeyUpdate: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *KeyUpdatesService) stubDeleteKeyUpdate() (*DeleteKeyUpdateResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest DeleteKeyUpdateResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubDeleteKeyUpdate: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *KeyUpdatesService) stubGetInitialKeyUpdate() (*GetInitialKeyUpdateResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"keyUpdate": {
+		"color": "#000000",
+		"content": "Database connection pool exhaustion identified as root cause",
+		"contentType": "text/plain",
+		"createdBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2021-08-07T11:58:23Z",
+		"id": "keyupdate-123",
+		"incidentID": "incident-123",
+		"lastModifiedBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"orgID": "org-123",
+		"scope": "internal",
+		"severityID": "severity-123",
+		"statusID": "status-123",
+		"title": "Root cause identified"
+	}
+}`
+	var dest GetInitialKeyUpdateResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetInitialKeyUpdate: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *KeyUpdatesService) stubGetKeyUpdate() (*GetKeyUpdateResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"keyUpdate": {
+		"color": "#000000",
+		"content": "Database connection pool exhaustion identified as root cause",
+		"contentType": "text/plain",
+		"createdBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2021-08-07T11:58:23Z",
+		"id": "keyupdate-123",
+		"incidentID": "incident-123",
+		"lastModifiedBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"orgID": "org-123",
+		"scope": "internal",
+		"severityID": "severity-123",
+		"statusID": "status-123",
+		"title": "Root cause identified"
+	}
+}`
+	var dest GetKeyUpdateResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetKeyUpdate: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *KeyUpdatesService) stubGetLastKeyUpdate() (*GetLastKeyUpdateResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"keyUpdate": {
+		"color": "#000000",
+		"content": "Database connection pool exhaustion identified as root cause",
+		"contentType": "text/plain",
+		"createdBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2021-08-07T11:58:23Z",
+		"id": "keyupdate-123",
+		"incidentID": "incident-123",
+		"lastModifiedBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"orgID": "org-123",
+		"scope": "internal",
+		"severityID": "severity-123",
+		"statusID": "status-123",
+		"title": "Root cause identified"
+	},
+	"keyUpdateCount": 10
+}`
+	var dest GetLastKeyUpdateResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetLastKeyUpdate: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *KeyUpdatesService) stubQueryKeyUpdates() (*QueryKeyUpdatesResponse, error) {
+	exampleJSON := `{
+	"cursor": {
+		"hasMore": true,
+		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+	},
+	"error": "something went wrong",
+	"keyUpdates": [
+		{
+			"color": "#000000",
+			"content": "Database connection pool exhaustion identified as root cause",
+			"contentType": "text/plain",
+			"createdBy": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"createdTime": "2021-08-07T11:58:23Z",
+			"id": "keyupdate-123",
+			"incidentID": "incident-123",
+			"lastModifiedBy": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"modifiedTime": "2021-08-07T11:58:23Z",
+			"orgID": "org-123",
+			"scope": "internal",
+			"severityID": "severity-123",
+			"statusID": "status-123",
+			"title": "Root cause identified"
+		},
+		{
+			"color": "#000000",
+			"content": "Database connection pool exhaustion identified as root cause",
+			"contentType": "text/plain",
+			"createdBy": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"createdTime": "2021-08-07T11:58:23Z",
+			"id": "keyupdate-123",
+			"incidentID": "incident-123",
+			"lastModifiedBy": {
+				"name": "Morty Smith",
+				"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+				"userID": "user-123"
+			},
+			"modifiedTime": "2021-08-07T11:58:23Z",
+			"orgID": "org-123",
+			"scope": "internal",
+			"severityID": "severity-123",
+			"statusID": "status-123",
+			"title": "Root cause identified"
+		}
+	],
+	"query": {
+		"contentType": "text/plain",
+		"incidentID": "incident-123",
+		"limit": 10,
+		"orderDirection": "DESC",
+		"orderField": "createdTime",
+		"scope": "internal"
+	}
+}`
+	var dest QueryKeyUpdatesResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubQueryKeyUpdates: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *KeyUpdatesService) stubUpdateKeyUpdate() (*UpdateKeyUpdateResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"keyUpdate": {
+		"color": "#000000",
+		"content": "Database connection pool exhaustion identified as root cause",
+		"contentType": "text/plain",
+		"createdBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"createdTime": "2021-08-07T11:58:23Z",
+		"id": "keyupdate-123",
+		"incidentID": "incident-123",
+		"lastModifiedBy": {
+			"name": "Morty Smith",
+			"photoURL": "https://upload.wikimedia.org/wikipedia/en/c/c3/Morty_Smith.png",
+			"userID": "user-123"
+		},
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"orgID": "org-123",
+		"scope": "internal",
+		"severityID": "severity-123",
+		"statusID": "status-123",
+		"title": "Root cause identified"
+	}
+}`
+	var dest UpdateKeyUpdateResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateKeyUpdate: json.Unmarshal: %w", err)
 	}
 	return &dest, nil
 }
@@ -9370,6 +10494,37 @@ var Options struct {
 		Resolved string
 	}
 
+	// CreateKeyUpdateRequestContentType contains the acceptable values for the
+	// CreateKeyUpdateRequest.ContentType field.
+	CreateKeyUpdateRequestContentType struct {
+
+		// TextPlain == "text/plain"
+		TextPlain string
+
+		// ApplicationXLexicalEditor == "application/x-lexical-editor"
+		ApplicationXLexicalEditor string
+
+		// TextMarkdownSlack == "text/markdown+slack"
+		TextMarkdownSlack string
+
+		// TextMarkdownMsteams == "text/markdown+msteams"
+		TextMarkdownMsteams string
+	}
+
+	// CreateKeyUpdateRequestScope contains the acceptable values for the
+	// CreateKeyUpdateRequest.Scope field.
+	CreateKeyUpdateRequestScope struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Public == "public"
+		Public string
+
+		// Private == "private"
+		Private string
+	}
+
 	// CustomMetadataFieldType contains the acceptable values for the
 	// CustomMetadataField.Type field.
 	CustomMetadataFieldType struct {
@@ -9473,6 +10628,57 @@ var Options struct {
 
 		// Incident == "incident"
 		Incident string
+	}
+
+	// GetInitialKeyUpdateRequestContentType contains the acceptable values for the
+	// GetInitialKeyUpdateRequest.ContentType field.
+	GetInitialKeyUpdateRequestContentType struct {
+
+		// TextPlain == "text/plain"
+		TextPlain string
+
+		// ApplicationXLexicalEditor == "application/x-lexical-editor"
+		ApplicationXLexicalEditor string
+
+		// TextMarkdownSlack == "text/markdown+slack"
+		TextMarkdownSlack string
+
+		// TextMarkdownMsteams == "text/markdown+msteams"
+		TextMarkdownMsteams string
+	}
+
+	// GetKeyUpdateRequestContentType contains the acceptable values for the
+	// GetKeyUpdateRequest.ContentType field.
+	GetKeyUpdateRequestContentType struct {
+
+		// TextPlain == "text/plain"
+		TextPlain string
+
+		// ApplicationXLexicalEditor == "application/x-lexical-editor"
+		ApplicationXLexicalEditor string
+
+		// TextMarkdownSlack == "text/markdown+slack"
+		TextMarkdownSlack string
+
+		// TextMarkdownMsteams == "text/markdown+msteams"
+		TextMarkdownMsteams string
+	}
+
+	// GetLastKeyUpdateRequestContentType contains the acceptable values for the
+	// GetLastKeyUpdateRequest.ContentType field.
+	GetLastKeyUpdateRequestContentType struct {
+
+		// TextPlain == "text/plain"
+		TextPlain string
+
+		// ApplicationXLexicalEditor == "application/x-lexical-editor"
+		ApplicationXLexicalEditor string
+
+		// TextMarkdownSlack == "text/markdown+slack"
+		TextMarkdownSlack string
+
+		// TextMarkdownMsteams == "text/markdown+msteams"
+		TextMarkdownMsteams string
 	}
 
 	// HookRunEventName contains the acceptable values for the
@@ -9619,6 +10825,93 @@ var Options struct {
 		DESC string
 	}
 
+	// KeyUpdateContentType contains the acceptable values for the
+	// KeyUpdate.ContentType field.
+	KeyUpdateContentType struct {
+
+		// TextPlain == "text/plain"
+		TextPlain string
+
+		// ApplicationXLexicalEditor == "application/x-lexical-editor"
+		ApplicationXLexicalEditor string
+
+		// TextMarkdownSlack == "text/markdown+slack"
+		TextMarkdownSlack string
+
+		// TextMarkdownMsteams == "text/markdown+msteams"
+		TextMarkdownMsteams string
+	}
+
+	// KeyUpdateScope contains the acceptable values for the
+	// KeyUpdate.Scope field.
+	KeyUpdateScope struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Public == "public"
+		Public string
+
+		// Private == "private"
+		Private string
+	}
+
+	// KeyUpdatesQueryOrderDirection contains the acceptable values for the
+	// KeyUpdatesQuery.OrderDirection field.
+	KeyUpdatesQueryOrderDirection struct {
+
+		// ASC == "ASC"
+		ASC string
+
+		// DESC == "DESC"
+		DESC string
+	}
+
+	// KeyUpdatesQueryOrderField contains the acceptable values for the
+	// KeyUpdatesQuery.OrderField field.
+	KeyUpdatesQueryOrderField struct {
+
+		// CreatedTime == "createdTime"
+		CreatedTime string
+
+		// ModifiedTime == "modifiedTime"
+		ModifiedTime string
+
+		// Title == "title"
+		Title string
+	}
+
+	// KeyUpdatesQueryScope contains the acceptable values for the
+	// KeyUpdatesQuery.Scope field.
+	KeyUpdatesQueryScope struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Public == "public"
+		Public string
+
+		// Private == "private"
+		Private string
+	}
+
+	// KeyUpdatesQueryContentType contains the acceptable values for the
+	// KeyUpdatesQuery.ContentType field.
+	KeyUpdatesQueryContentType struct {
+
+		// TextPlain == "text/plain"
+		TextPlain string
+
+		// ApplicationXLexicalEditor == "application/x-lexical-editor"
+		ApplicationXLexicalEditor string
+
+		// TextMarkdownSlack == "text/markdown+slack"
+		TextMarkdownSlack string
+
+		// TextMarkdownMsteams == "text/markdown+msteams"
+		TextMarkdownMsteams string
+	}
+
 	// TaskStatus contains the acceptable values for the
 	// Task.Status field.
 	TaskStatus struct {
@@ -9687,6 +10980,37 @@ var Options struct {
 
 		// IncidentStart == "incidentStart"
 		IncidentStart string
+	}
+
+	// UpdateKeyUpdateRequestContentType contains the acceptable values for the
+	// UpdateKeyUpdateRequest.ContentType field.
+	UpdateKeyUpdateRequestContentType struct {
+
+		// TextPlain == "text/plain"
+		TextPlain string
+
+		// ApplicationXLexicalEditor == "application/x-lexical-editor"
+		ApplicationXLexicalEditor string
+
+		// TextMarkdownSlack == "text/markdown+slack"
+		TextMarkdownSlack string
+
+		// TextMarkdownMsteams == "text/markdown+msteams"
+		TextMarkdownMsteams string
+	}
+
+	// UpdateKeyUpdateRequestScope contains the acceptable values for the
+	// UpdateKeyUpdateRequest.Scope field.
+	UpdateKeyUpdateRequestScope struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Public == "public"
+		Public string
+
+		// Private == "private"
+		Private string
 	}
 
 	// UpdateStatusRequestStatus contains the acceptable values for the
@@ -9809,6 +11133,20 @@ func init() {
 
 	Options.CreateIncidentRequestStatus.Resolved = "resolved"
 
+	Options.CreateKeyUpdateRequestContentType.TextPlain = "text/plain"
+
+	Options.CreateKeyUpdateRequestContentType.ApplicationXLexicalEditor = "application/x-lexical-editor"
+
+	Options.CreateKeyUpdateRequestContentType.TextMarkdownSlack = "text/markdown+slack"
+
+	Options.CreateKeyUpdateRequestContentType.TextMarkdownMsteams = "text/markdown+msteams"
+
+	Options.CreateKeyUpdateRequestScope.Internal = "internal"
+
+	Options.CreateKeyUpdateRequestScope.Public = "public"
+
+	Options.CreateKeyUpdateRequestScope.Private = "private"
+
 	Options.CustomMetadataFieldType.String = "string"
 
 	Options.CustomMetadataFieldType.SingleSelect = "single-select"
@@ -9858,6 +11196,30 @@ func init() {
 	Options.FieldType.Bool = "bool"
 
 	Options.GetFieldValuesRequestTargetKind.Incident = "incident"
+
+	Options.GetInitialKeyUpdateRequestContentType.TextPlain = "text/plain"
+
+	Options.GetInitialKeyUpdateRequestContentType.ApplicationXLexicalEditor = "application/x-lexical-editor"
+
+	Options.GetInitialKeyUpdateRequestContentType.TextMarkdownSlack = "text/markdown+slack"
+
+	Options.GetInitialKeyUpdateRequestContentType.TextMarkdownMsteams = "text/markdown+msteams"
+
+	Options.GetKeyUpdateRequestContentType.TextPlain = "text/plain"
+
+	Options.GetKeyUpdateRequestContentType.ApplicationXLexicalEditor = "application/x-lexical-editor"
+
+	Options.GetKeyUpdateRequestContentType.TextMarkdownSlack = "text/markdown+slack"
+
+	Options.GetKeyUpdateRequestContentType.TextMarkdownMsteams = "text/markdown+msteams"
+
+	Options.GetLastKeyUpdateRequestContentType.TextPlain = "text/plain"
+
+	Options.GetLastKeyUpdateRequestContentType.ApplicationXLexicalEditor = "application/x-lexical-editor"
+
+	Options.GetLastKeyUpdateRequestContentType.TextMarkdownSlack = "text/markdown+slack"
+
+	Options.GetLastKeyUpdateRequestContentType.TextMarkdownMsteams = "text/markdown+msteams"
 
 	Options.HookRunEventName.IncidentCreated = "incidentCreated"
 
@@ -9925,6 +11287,44 @@ func init() {
 
 	Options.IncidentsQueryOrderDirection.DESC = "DESC"
 
+	Options.KeyUpdateContentType.TextPlain = "text/plain"
+
+	Options.KeyUpdateContentType.ApplicationXLexicalEditor = "application/x-lexical-editor"
+
+	Options.KeyUpdateContentType.TextMarkdownSlack = "text/markdown+slack"
+
+	Options.KeyUpdateContentType.TextMarkdownMsteams = "text/markdown+msteams"
+
+	Options.KeyUpdateScope.Internal = "internal"
+
+	Options.KeyUpdateScope.Public = "public"
+
+	Options.KeyUpdateScope.Private = "private"
+
+	Options.KeyUpdatesQueryOrderDirection.ASC = "ASC"
+
+	Options.KeyUpdatesQueryOrderDirection.DESC = "DESC"
+
+	Options.KeyUpdatesQueryOrderField.CreatedTime = "createdTime"
+
+	Options.KeyUpdatesQueryOrderField.ModifiedTime = "modifiedTime"
+
+	Options.KeyUpdatesQueryOrderField.Title = "title"
+
+	Options.KeyUpdatesQueryScope.Internal = "internal"
+
+	Options.KeyUpdatesQueryScope.Public = "public"
+
+	Options.KeyUpdatesQueryScope.Private = "private"
+
+	Options.KeyUpdatesQueryContentType.TextPlain = "text/plain"
+
+	Options.KeyUpdatesQueryContentType.ApplicationXLexicalEditor = "application/x-lexical-editor"
+
+	Options.KeyUpdatesQueryContentType.TextMarkdownSlack = "text/markdown+slack"
+
+	Options.KeyUpdatesQueryContentType.TextMarkdownMsteams = "text/markdown+msteams"
+
 	Options.TaskStatus.Todo = "todo"
 
 	Options.TaskStatus.Progress = "progress"
@@ -9954,6 +11354,20 @@ func init() {
 	Options.UpdateIncidentEventTimeRequestEventName.IncidentEnd = "incidentEnd"
 
 	Options.UpdateIncidentEventTimeRequestEventName.IncidentStart = "incidentStart"
+
+	Options.UpdateKeyUpdateRequestContentType.TextPlain = "text/plain"
+
+	Options.UpdateKeyUpdateRequestContentType.ApplicationXLexicalEditor = "application/x-lexical-editor"
+
+	Options.UpdateKeyUpdateRequestContentType.TextMarkdownSlack = "text/markdown+slack"
+
+	Options.UpdateKeyUpdateRequestContentType.TextMarkdownMsteams = "text/markdown+msteams"
+
+	Options.UpdateKeyUpdateRequestScope.Internal = "internal"
+
+	Options.UpdateKeyUpdateRequestScope.Public = "public"
+
+	Options.UpdateKeyUpdateRequestScope.Private = "private"
 
 	Options.UpdateStatusRequestStatus.Active = "active"
 
