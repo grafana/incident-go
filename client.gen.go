@@ -490,6 +490,11 @@ type CreateIncidentRequest struct {
 	// AttachURLis the associated URL.
 	AttachURL string `json:"attachURL"`
 
+	// InitialStatusUpdate is the initial status update content that will be created
+	// when the incident is created. This will be added directly as a key update for
+	// the incident.
+	InitialStatusUpdate string `json:"initialStatusUpdate"`
+
 	// AlertGroupID is the identifier of the alert group associated with this incident.
 	AlertGroupID *string `json:"alertGroupID"`
 }
@@ -534,6 +539,35 @@ type CreateKeyUpdateResponse struct {
 
 	// KeyUpdate is the newly created key update.
 	KeyUpdate KeyUpdate `json:"keyUpdate"`
+}
+
+// CreateOrgStatusRequest is the request for CreateOrgStatus.
+type CreateOrgStatusRequest struct {
+
+	// IncidentType is the type of incident this status applies to.
+	IncidentType string `json:"incidentType"`
+
+	// Name is the display name of the status.
+	Name string `json:"name"`
+
+	// Description provides additional context about the status.
+	Description string `json:"description"`
+
+	// Category indicates whether status is active or resolved.
+	Category string `json:"category"`
+
+	// Color is the hex color for the status.
+	Color string `json:"color"`
+
+	// Icon is the icon name for the status.
+	Icon string `json:"icon"`
+}
+
+// CreateOrgStatusResponse is the response from CreateOrgStatus.
+type CreateOrgStatusResponse struct {
+
+	// Status is the newly created status.
+	Status Status `json:"status"`
 }
 
 // CreateRoleRequest is the request to create a role.
@@ -860,6 +894,9 @@ type GetFieldRequest struct {
 
 	// FieldUUID is the UUID of the field.
 	FieldUUID string `json:"fieldUUID"`
+
+	// IncludeArchived, if true, includes archived fields in the result.
+	IncludeArchived bool `json:"includeArchived"`
 }
 
 // GetFieldResponse is the response from the GetField method.
@@ -928,6 +965,20 @@ type GetHookRunsResponse struct {
 
 	// HookRuns is a list of HookRuns for this Incident.
 	HookRuns []HookRun `json:"hookRuns"`
+}
+
+// GetIncidentChannelsRequest is the request for the GetIncidentChannels method.
+type GetIncidentChannelsRequest struct {
+
+	// IncidentID is the identifier of the Incident.
+	IncidentID string `json:"incidentID"`
+}
+
+// GetIncidentChannelsResponse is the response for the GetIncidentChannels method.
+type GetIncidentChannelsResponse struct {
+
+	// IncidentChannels is the list of chat channels linked to the incident.
+	IncidentChannels []IncidentChannel `json:"incidentChannels"`
 }
 
 // GetIncidentMembershipRequest is the request for the GetIncidentMembership
@@ -1057,6 +1108,20 @@ type GetRolesResponse struct {
 	Roles []Role `json:"roles"`
 }
 
+// GetStatusByIDRequest is the request for GetStatusByID.
+type GetStatusByIDRequest struct {
+
+	// StatusID is the unique identifier of the status.
+	StatusID string `json:"statusID"`
+}
+
+// GetStatusByIDResponse is the response from GetStatusByID.
+type GetStatusByIDResponse struct {
+
+	// Status is the requested status.
+	Status Status `json:"status"`
+}
+
 // GetUserRequest is the request for GetUser.
 type GetUserRequest struct {
 
@@ -1164,6 +1229,9 @@ type Incident struct {
 	// ways too. For example, during drills, more help might be offered to users.
 	IsDrill bool `json:"isDrill"`
 
+	// IncidentType indicates the kind of incident to create.
+	IncidentType string `json:"incidentType"`
+
 	// CreatedTime is when the Incident was created. The string value format should
 	// follow RFC 3339.
 	CreatedTime string `json:"createdTime"`
@@ -1200,9 +1268,6 @@ type Incident struct {
 	// Summary is as short recap of the Incident.
 	Summary string `json:"summary"`
 
-	// HeroImagePath is the path to the hero image for this Incident.
-	HeroImagePath string `json:"heroImagePath"`
-
 	// IncidentStart is when the Incident began. The string value format should follow
 	// RFC 3339.
 	IncidentStart string `json:"incidentStart"`
@@ -1210,6 +1275,23 @@ type Incident struct {
 	// IncidentEnd is when the Incident ended. The string value format should follow
 	// RFC 3339.
 	IncidentEnd string `json:"incidentEnd"`
+
+	// IncidentChannels is a list of chat channels linked to the Incident.
+	IncidentChannels []IncidentChannel `json:"incidentChannels"`
+}
+
+// IncidentChannel represents a chat channel (e.g. Slack, MS Teams) linked to an
+// incident.
+type IncidentChannel struct {
+
+	// Provider is the chat provider type.
+	Provider string `json:"provider"`
+
+	// ChannelID is the channel or conversation identifier in the provider.
+	ChannelID string `json:"channelID"`
+
+	// TeamID is the workspace or tenant identifier in the provider.
+	TeamID string `json:"teamID"`
 }
 
 // IncidentKeyValueLabel is a key:value label associated with an Incident.
@@ -1327,9 +1409,6 @@ type IncidentPreview struct {
 	// Summary is as short recap of the incident.
 	Summary string `json:"summary"`
 
-	// HeroImagePath is the path to the hero image for this Incident.
-	HeroImagePath string `json:"heroImagePath"`
-
 	// Status is the current status of the Incident.
 	Status string `json:"status"`
 
@@ -1349,6 +1428,9 @@ type IncidentPreview struct {
 
 	// IncidentMembershipPreview is a summary of the people involved in the Incident.
 	IncidentMembershipPreview IncidentMembershipPreview `json:"incidentMembershipPreview"`
+
+	// IncidentChannels is a list of chat channels linked to the Incident.
+	IncidentChannels []IncidentChannel `json:"incidentChannels"`
 
 	// Version is the times that the incident has been updated
 	Version int `json:"version"`
@@ -1580,6 +1662,10 @@ type QueryIncidentPreviewsRequest struct {
 	// IncludeMembershipPreview if true will include membership previews in the
 	// response.
 	IncludeMembershipPreview bool `json:"includeMembershipPreview"`
+
+	// IncludeIncidentChannels if true will include incident channels (e.g. Slack,
+	// MS Teams) in the response.
+	IncludeIncidentChannels bool `json:"includeIncidentChannels"`
 }
 
 // QueryIncidentPreviewsResponse is the response for the QueryIncidentPreviews
@@ -1644,6 +1730,21 @@ type QueryKeyUpdatesResponse struct {
 	Cursor Cursor `json:"cursor"`
 }
 
+// QueryOrgStatusesRequest is the request for QueryOrgStatuses.
+type QueryOrgStatusesRequest struct {
+
+	// IncidentType is the type of incident to query statuses for. If empty, returns
+	// all statuses for all incident types.
+	IncidentType string `json:"incidentType"`
+}
+
+// QueryOrgStatusesResponse is the response from QueryOrgStatuses.
+type QueryOrgStatusesResponse struct {
+
+	// Configurations is the list of status configurations.
+	Configurations []StatusConfiguration `json:"configurations"`
+}
+
 // QueryUsersRequest is the request for getting a list of users.
 type QueryUsersRequest struct {
 
@@ -1666,6 +1767,27 @@ type QueryUsersResponse struct {
 
 	// Cursor should be passed back to get the next page of results.
 	Cursor Cursor `json:"cursor"`
+}
+
+// RecordFieldValueRequest is the request struct for api RecordFieldValue method.
+type RecordFieldValueRequest struct {
+
+	// FieldUUID is the UUID of the field.
+	FieldUUID string `json:"fieldUUID"`
+
+	// Value is the json encoded value of the field to record. If empty, the field
+	// value will be set unset.
+	Value string `json:"value"`
+
+	// TargetKind is the kind of the target to record the field value for.
+	TargetKind string `json:"targetKind"`
+
+	// TargetID is the ID of the target to record the field value for.
+	TargetID string `json:"targetID"`
+}
+
+// RecordFieldValueResponse is the response from the RecordFieldValue method.
+type RecordFieldValueResponse struct {
 }
 
 // RemoveActivityRequest is the request for the RemoveActivity method.
@@ -1732,6 +1854,66 @@ type Role struct {
 
 	// UpdatedAt is the time this role was updated at.
 	UpdatedAt string `json:"updatedAt"`
+}
+
+// Status represents an incident status definition.
+type Status struct {
+
+	// StatusID is the unique identifier of the status.
+	StatusID string `json:"statusID"`
+
+	// IncidentType indicates the kind of incident this status applies to.
+	IncidentType string `json:"incidentType"`
+
+	// Name is the display name of the status.
+	Name string `json:"name"`
+
+	// Description provides additional context about the status.
+	Description string `json:"description"`
+
+	// Category indicates whether status is active or resolved.
+	Category string `json:"category"`
+
+	// Kind is deprecated, use Category instead.
+	Kind string `json:"kind"`
+
+	// Color is the hex color for the status.
+	Color string `json:"color"`
+
+	// Icon is the icon name for the status.
+	Icon string `json:"icon"`
+
+	// Slug is the URL-friendly version of the name.
+	Slug string `json:"slug"`
+
+	// Position is the order in the status list.
+	Position int `json:"position"`
+
+	// ArchivedTime is the time the status was archived, or empty if not archived.
+	ArchivedTime string `json:"archivedTime"`
+
+	// Immutable indicates whether this status can be modified.
+	Immutable bool `json:"immutable"`
+
+	// CreatedTime is when the status was created.
+	CreatedTime string `json:"createdTime"`
+
+	// ModifiedTime is when the status was last modified.
+	ModifiedTime string `json:"modifiedTime"`
+}
+
+// StatusConfiguration groups statuses by incident type.
+type StatusConfiguration struct {
+
+	// Statuses is the list of statuses for this configuration.
+	Statuses []Status `json:"statuses"`
+
+	// IncidentType determines the type of incident the configuration is valid for.
+	IncidentType string `json:"incidentType"`
+
+	// Default indicates whether this configuration is the default for the given
+	// incident type.
+	Default bool `json:"default"`
 }
 
 // Task is an individual task that somebody will do to resolve an Incident.
@@ -2084,6 +2266,38 @@ type UpdateKeyUpdateResponse struct {
 
 	// KeyUpdate is the modified key update.
 	KeyUpdate KeyUpdate `json:"keyUpdate"`
+}
+
+// UpdateOrgStatusRequest is the request for UpdateOrgStatus.
+type UpdateOrgStatusRequest struct {
+
+	// StatusID is the unique identifier of the status to update.
+	StatusID string `json:"statusID"`
+
+	// IncidentType is the type of incident this status applies to.
+	IncidentType string `json:"incidentType"`
+
+	// Name is the display name of the status.
+	Name string `json:"name"`
+
+	// Description provides additional context about the status.
+	Description string `json:"description"`
+
+	// Category indicates whether status is active or resolved.
+	Category string `json:"category"`
+
+	// Color is the hex color for the status.
+	Color string `json:"color"`
+
+	// Icon is the icon name for the status.
+	Icon string `json:"icon"`
+}
+
+// UpdateOrgStatusResponse is the response from UpdateOrgStatus.
+type UpdateOrgStatusResponse struct {
+
+	// Status is the updated status.
+	Status Status `json:"status"`
 }
 
 // UpdateRoleRequest is the request to update a role.
@@ -3311,6 +3525,68 @@ func (s *FieldsService) GetFields(ctx context.Context, r GetFieldsRequest) (*Get
 	return &response.GetFieldsResponse, nil
 }
 
+// RecordFieldValue records a field value.
+func (s *FieldsService) RecordFieldValue(ctx context.Context, r RecordFieldValueRequest) (*RecordFieldValueResponse, error) {
+	if s.client.stubmode {
+		return s.stubRecordFieldValue()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.RecordFieldValue: marshal RecordFieldValueRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "FieldsService.RecordFieldValue"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.RecordFieldValue: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.RecordFieldValue: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		RecordFieldValueResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("FieldsService.RecordFieldValue: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("FieldsService.RecordFieldValue: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("FieldsService.RecordFieldValue: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.RecordFieldValueResponse, nil
+}
+
 // UnarchiveField unarchives a field.
 func (s *FieldsService) UnarchiveField(ctx context.Context, r UnarchiveFieldRequest) (*UnarchiveFieldResponse, error) {
 	if s.client.stubmode {
@@ -3882,6 +4158,68 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 		return nil, errors.New(response.Error)
 	}
 	return &response.GetIncidentResponse, nil
+}
+
+// GetIncidentChannels returns the chat channels linked to an incident.
+func (s *IncidentsService) GetIncidentChannels(ctx context.Context, r GetIncidentChannelsRequest) (*GetIncidentChannelsResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetIncidentChannels()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: marshal GetIncidentChannelsRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IncidentsService.GetIncidentChannels"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetIncidentChannelsResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetIncidentChannelsResponse, nil
 }
 
 // GetIncidentMembership will return the full list of people involved in an
@@ -5788,6 +6126,267 @@ func (s *RolesService) UpdateRole(ctx context.Context, r UpdateRoleRequest) (*Up
 	return &response.UpdateRoleResponse, nil
 }
 
+// StatusService provides methods for managing incident status configurations.
+// Get one by calling NewStatusService.
+type StatusService struct {
+	client *Client
+}
+
+// NewStatusService gets a new StatusService.
+func NewStatusService(client *Client) *StatusService {
+	return &StatusService{
+		client: client,
+	}
+}
+
+// CreateOrgStatus creates a new custom status.
+func (s *StatusService) CreateOrgStatus(ctx context.Context, r CreateOrgStatusRequest) (*CreateOrgStatusResponse, error) {
+	if s.client.stubmode {
+		return s.stubCreateOrgStatus()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.CreateOrgStatus: marshal CreateOrgStatusRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "StatusService.CreateOrgStatus"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.CreateOrgStatus: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.CreateOrgStatus: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		CreateOrgStatusResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("StatusService.CreateOrgStatus: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.CreateOrgStatus: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("StatusService.CreateOrgStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.CreateOrgStatusResponse, nil
+}
+
+// GetStatusByID gets a specific status by ID.
+func (s *StatusService) GetStatusByID(ctx context.Context, r GetStatusByIDRequest) (*GetStatusByIDResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetStatusByID()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.GetStatusByID: marshal GetStatusByIDRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "StatusService.GetStatusByID"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.GetStatusByID: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.GetStatusByID: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetStatusByIDResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("StatusService.GetStatusByID: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.GetStatusByID: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("StatusService.GetStatusByID: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetStatusByIDResponse, nil
+}
+
+// QueryOrgStatuses returns a set of statuses for a given incident type.
+func (s *StatusService) QueryOrgStatuses(ctx context.Context, r QueryOrgStatusesRequest) (*QueryOrgStatusesResponse, error) {
+	if s.client.stubmode {
+		return s.stubQueryOrgStatuses()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.QueryOrgStatuses: marshal QueryOrgStatusesRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "StatusService.QueryOrgStatuses"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.QueryOrgStatuses: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.QueryOrgStatuses: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		QueryOrgStatusesResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("StatusService.QueryOrgStatuses: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.QueryOrgStatuses: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("StatusService.QueryOrgStatuses: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.QueryOrgStatusesResponse, nil
+}
+
+// UpdateOrgStatus updates an existing status.
+func (s *StatusService) UpdateOrgStatus(ctx context.Context, r UpdateOrgStatusRequest) (*UpdateOrgStatusResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateOrgStatus()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.UpdateOrgStatus: marshal UpdateOrgStatusRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "StatusService.UpdateOrgStatus"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.UpdateOrgStatus: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.UpdateOrgStatus: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateOrgStatusResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("StatusService.UpdateOrgStatus: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("StatusService.UpdateOrgStatus: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("StatusService.UpdateOrgStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UpdateOrgStatusResponse, nil
+}
+
 // TasksService provides methods for managing tasks relating to Incidents.
 // Get one by calling NewTasksService.
 type TasksService struct {
@@ -6470,7 +7069,7 @@ func (s *ActivityService) stubQueryActivity() (*QueryActivityResponse, error) {
 	],
 	"cursor": {
 		"hasMore": true,
-		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+		"nextValue": "123e4567-e89b-12d3-a456-426614174000"
 	},
 	"error": "something went wrong",
 	"query": {
@@ -7231,6 +7830,17 @@ func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
 	return &dest, nil
 }
 
+func (s *FieldsService) stubRecordFieldValue() (*RecordFieldValueResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest RecordFieldValueResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubRecordFieldValue: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
 func (s *FieldsService) stubUnarchiveField() (*UnarchiveFieldResponse, error) {
 	exampleJSON := `{
 	"error": "something went wrong"
@@ -7314,7 +7924,18 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -7362,6 +7983,7 @@ func (s *IncidentsService) stubAddLabel() (*AddLabelResponse, error) {
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -7517,7 +8139,18 @@ func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -7565,6 +8198,7 @@ func (s *IncidentsService) stubAssignRole() (*AssignRoleResponse, error) {
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -7661,7 +8295,18 @@ func (s *IncidentsService) stubCreateIncident() (*CreateIncidentResponse, error)
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -7709,6 +8354,7 @@ func (s *IncidentsService) stubCreateIncident() (*CreateIncidentResponse, error)
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -7805,7 +8451,18 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -7853,6 +8510,7 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -7933,6 +8591,29 @@ func (s *IncidentsService) stubGetIncident() (*GetIncidentResponse, error) {
 	var dest GetIncidentResponse
 	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
 		return nil, fmt.Errorf("stubGetIncident: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IncidentsService) stubGetIncidentChannels() (*GetIncidentChannelsResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"incidentChannels": [
+		{
+			"channelID": "C0123456789",
+			"provider": "slack",
+			"teamID": "T0123456789"
+		},
+		{
+			"channelID": "C0123456789",
+			"provider": "slack",
+			"teamID": "T0123456789"
+		}
+	]
+}`
+	var dest GetIncidentChannelsResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetIncidentChannels: json.Unmarshal: %w", err)
 	}
 	return &dest, nil
 }
@@ -8021,7 +8702,7 @@ func (s *IncidentsService) stubQueryIncidentPreviews() (*QueryIncidentPreviewsRe
 	exampleJSON := `{
 	"cursor": {
 		"hasMore": true,
-		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+		"nextValue": "123e4567-e89b-12d3-a456-426614174000"
 	},
 	"error": "something went wrong",
 	"incidentPreviews": [
@@ -8044,7 +8725,18 @@ func (s *IncidentsService) stubQueryIncidentPreviews() (*QueryIncidentPreviewsRe
 					"value": "value"
 				}
 			],
-			"heroImagePath": "/incident/api/hero-images/1234/mb6SVYPti2uY1qOokhs2mavgMFOtqDe/v1234/1234.png",
+			"incidentChannels": [
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				},
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				}
+			],
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
 			"incidentMembershipPreview": {
@@ -8114,7 +8806,18 @@ func (s *IncidentsService) stubQueryIncidentPreviews() (*QueryIncidentPreviewsRe
 					"value": "value"
 				}
 			],
-			"heroImagePath": "/incident/api/hero-images/1234/mb6SVYPti2uY1qOokhs2mavgMFOtqDe/v1234/1234.png",
+			"incidentChannels": [
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				},
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				}
+			],
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
 			"incidentMembershipPreview": {
@@ -8184,7 +8887,7 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 	exampleJSON := `{
 	"cursor": {
 		"hasMore": true,
-		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+		"nextValue": "123e4567-e89b-12d3-a456-426614174000"
 	},
 	"error": "something went wrong",
 	"incidents": [
@@ -8197,7 +8900,18 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			},
 			"createdTime": "2021-08-07T11:58:23Z",
 			"durationSeconds": 60,
-			"heroImagePath": "/relative/path/to/hero/image.png",
+			"incidentChannels": [
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				},
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				}
+			],
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
 			"incidentMembership": {
@@ -8245,6 +8959,7 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 				"totalParticipants": 3
 			},
 			"incidentStart": "2022-02-11 00:50:20.574137",
+			"incidentType": "internal",
 			"isDrill": true,
 			"labels": [
 				{
@@ -8330,7 +9045,18 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 			},
 			"createdTime": "2021-08-07T11:58:23Z",
 			"durationSeconds": 60,
-			"heroImagePath": "/relative/path/to/hero/image.png",
+			"incidentChannels": [
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				},
+				{
+					"channelID": "C0123456789",
+					"provider": "slack",
+					"teamID": "T0123456789"
+				}
+			],
 			"incidentEnd": "2022-02-11 00:50:20.574137",
 			"incidentID": "incident-123",
 			"incidentMembership": {
@@ -8378,6 +9104,7 @@ func (s *IncidentsService) stubQueryIncidents() (*QueryIncidentsResponse, error)
 				"totalParticipants": 3
 			},
 			"incidentStart": "2022-02-11 00:50:20.574137",
+			"incidentType": "internal",
 			"isDrill": true,
 			"labels": [
 				{
@@ -8496,7 +9223,18 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -8544,6 +9282,7 @@ func (s *IncidentsService) stubRemoveLabel() (*RemoveLabelResponse, error) {
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -8699,7 +9438,18 @@ func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -8747,6 +9497,7 @@ func (s *IncidentsService) stubUnassignRole() (*UnassignRoleResponse, error) {
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -8854,7 +9605,18 @@ func (s *IncidentsService) stubUpdateIncidentIsDrill() (*UpdateIncidentIsDrillRe
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -8902,6 +9664,7 @@ func (s *IncidentsService) stubUpdateIncidentIsDrill() (*UpdateIncidentIsDrillRe
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -8998,7 +9761,18 @@ func (s *IncidentsService) stubUpdateSeverity() (*UpdateSeverityResponse, error)
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -9046,6 +9820,7 @@ func (s *IncidentsService) stubUpdateSeverity() (*UpdateSeverityResponse, error)
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -9142,7 +9917,18 @@ func (s *IncidentsService) stubUpdateStatus() (*UpdateStatusResponse, error) {
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -9190,6 +9976,7 @@ func (s *IncidentsService) stubUpdateStatus() (*UpdateStatusResponse, error) {
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -9286,7 +10073,18 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 		},
 		"createdTime": "2021-08-07T11:58:23Z",
 		"durationSeconds": 60,
-		"heroImagePath": "/relative/path/to/hero/image.png",
+		"incidentChannels": [
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			},
+			{
+				"channelID": "C0123456789",
+				"provider": "slack",
+				"teamID": "T0123456789"
+			}
+		],
 		"incidentEnd": "2022-02-11 00:50:20.574137",
 		"incidentID": "incident-123",
 		"incidentMembership": {
@@ -9334,6 +10132,7 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 			"totalParticipants": 3
 		},
 		"incidentStart": "2022-02-11 00:50:20.574137",
+		"incidentType": "internal",
 		"isDrill": true,
 		"labels": [
 			{
@@ -9683,7 +10482,7 @@ func (s *KeyUpdatesService) stubQueryKeyUpdates() (*QueryKeyUpdatesResponse, err
 	exampleJSON := `{
 	"cursor": {
 		"hasMore": true,
-		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+		"nextValue": "123e4567-e89b-12d3-a456-426614174000"
 	},
 	"error": "something went wrong",
 	"keyUpdates": [
@@ -9895,6 +10694,176 @@ func (s *RolesService) stubUpdateRole() (*UpdateRoleResponse, error) {
 	var dest UpdateRoleResponse
 	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
 		return nil, fmt.Errorf("stubUpdateRole: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *StatusService) stubCreateOrgStatus() (*CreateOrgStatusResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"status": {
+		"archivedTime": "2021-08-07T11:58:23Z",
+		"category": "active",
+		"color": "#841234",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"description": "We are investigating the issue",
+		"icon": "clock",
+		"immutable": false,
+		"incidentType": "internal",
+		"kind": "active",
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"name": "Investigating",
+		"position": 1,
+		"slug": "investigating",
+		"statusID": "cffcf736-fde8-4285-ae6b-021dd2fc9d4e"
+	}
+}`
+	var dest CreateOrgStatusResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubCreateOrgStatus: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *StatusService) stubGetStatusByID() (*GetStatusByIDResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"status": {
+		"archivedTime": "2021-08-07T11:58:23Z",
+		"category": "active",
+		"color": "#841234",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"description": "We are investigating the issue",
+		"icon": "clock",
+		"immutable": false,
+		"incidentType": "internal",
+		"kind": "active",
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"name": "Investigating",
+		"position": 1,
+		"slug": "investigating",
+		"statusID": "cffcf736-fde8-4285-ae6b-021dd2fc9d4e"
+	}
+}`
+	var dest GetStatusByIDResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetStatusByID: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *StatusService) stubQueryOrgStatuses() (*QueryOrgStatusesResponse, error) {
+	exampleJSON := `{
+	"configurations": [
+		{
+			"default": true,
+			"incidentType": "internal",
+			"statuses": [
+				{
+					"archivedTime": "2021-08-07T11:58:23Z",
+					"category": "active",
+					"color": "#841234",
+					"createdTime": "2021-08-07T11:58:23Z",
+					"description": "We are investigating the issue",
+					"icon": "clock",
+					"immutable": false,
+					"incidentType": "internal",
+					"kind": "active",
+					"modifiedTime": "2021-08-07T11:58:23Z",
+					"name": "Investigating",
+					"position": 1,
+					"slug": "investigating",
+					"statusID": "cffcf736-fde8-4285-ae6b-021dd2fc9d4e"
+				},
+				{
+					"archivedTime": "2021-08-07T11:58:23Z",
+					"category": "active",
+					"color": "#841234",
+					"createdTime": "2021-08-07T11:58:23Z",
+					"description": "We are investigating the issue",
+					"icon": "clock",
+					"immutable": false,
+					"incidentType": "internal",
+					"kind": "active",
+					"modifiedTime": "2021-08-07T11:58:23Z",
+					"name": "Investigating",
+					"position": 1,
+					"slug": "investigating",
+					"statusID": "cffcf736-fde8-4285-ae6b-021dd2fc9d4e"
+				}
+			]
+		},
+		{
+			"default": true,
+			"incidentType": "internal",
+			"statuses": [
+				{
+					"archivedTime": "2021-08-07T11:58:23Z",
+					"category": "active",
+					"color": "#841234",
+					"createdTime": "2021-08-07T11:58:23Z",
+					"description": "We are investigating the issue",
+					"icon": "clock",
+					"immutable": false,
+					"incidentType": "internal",
+					"kind": "active",
+					"modifiedTime": "2021-08-07T11:58:23Z",
+					"name": "Investigating",
+					"position": 1,
+					"slug": "investigating",
+					"statusID": "cffcf736-fde8-4285-ae6b-021dd2fc9d4e"
+				},
+				{
+					"archivedTime": "2021-08-07T11:58:23Z",
+					"category": "active",
+					"color": "#841234",
+					"createdTime": "2021-08-07T11:58:23Z",
+					"description": "We are investigating the issue",
+					"icon": "clock",
+					"immutable": false,
+					"incidentType": "internal",
+					"kind": "active",
+					"modifiedTime": "2021-08-07T11:58:23Z",
+					"name": "Investigating",
+					"position": 1,
+					"slug": "investigating",
+					"statusID": "cffcf736-fde8-4285-ae6b-021dd2fc9d4e"
+				}
+			]
+		}
+	],
+	"error": "something went wrong"
+}`
+	var dest QueryOrgStatusesResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubQueryOrgStatuses: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *StatusService) stubUpdateOrgStatus() (*UpdateOrgStatusResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"status": {
+		"archivedTime": "2021-08-07T11:58:23Z",
+		"category": "active",
+		"color": "#841234",
+		"createdTime": "2021-08-07T11:58:23Z",
+		"description": "We are investigating the issue",
+		"icon": "clock",
+		"immutable": false,
+		"incidentType": "internal",
+		"kind": "active",
+		"modifiedTime": "2021-08-07T11:58:23Z",
+		"name": "Investigating",
+		"position": 1,
+		"slug": "investigating",
+		"statusID": "cffcf736-fde8-4285-ae6b-021dd2fc9d4e"
+	}
+}`
+	var dest UpdateOrgStatusResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateOrgStatus: json.Unmarshal: %w", err)
 	}
 	return &dest, nil
 }
@@ -10269,7 +11238,7 @@ func (s *UsersService) stubQueryUsers() (*QueryUsersResponse, error) {
 	exampleJSON := `{
 	"cursor": {
 		"hasMore": true,
-		"nextValue": "aaaabbbbccccddddeeeeffffgggg"
+		"nextValue": "123e4567-e89b-12d3-a456-426614174000"
 	},
 	"error": "something went wrong",
 	"query": {
@@ -10525,6 +11494,48 @@ var Options struct {
 		Private string
 	}
 
+	// CreateOrgStatusRequestIncidentType contains the acceptable values for the
+	// CreateOrgStatusRequest.IncidentType field.
+	CreateOrgStatusRequestIncidentType struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Private == "private"
+		Private string
+	}
+
+	// CreateOrgStatusRequestCategory contains the acceptable values for the
+	// CreateOrgStatusRequest.Category field.
+	CreateOrgStatusRequestCategory struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// CreateOrgStatusRequestIcon contains the acceptable values for the
+	// CreateOrgStatusRequest.Icon field.
+	CreateOrgStatusRequestIcon struct {
+
+		// Clock == "clock"
+		Clock string
+
+		// InfoCircle == "info-circle"
+		InfoCircle string
+
+		// ExclamationCircle == "exclamation-circle"
+		ExclamationCircle string
+
+		// QuestionCircle == "question-circle"
+		QuestionCircle string
+
+		// CheckCircle == "check-circle"
+		CheckCircle string
+	}
+
 	// CustomMetadataFieldType contains the acceptable values for the
 	// CustomMetadataField.Type field.
 	CustomMetadataFieldType struct {
@@ -10732,6 +11743,17 @@ var Options struct {
 		Failed string
 	}
 
+	// IncidentIncidentType contains the acceptable values for the
+	// Incident.IncidentType field.
+	IncidentIncidentType struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Private == "private"
+		Private string
+	}
+
 	// IncidentStatus contains the acceptable values for the
 	// Incident.Status field.
 	IncidentStatus struct {
@@ -10912,6 +11934,78 @@ var Options struct {
 		TextMarkdownMsteams string
 	}
 
+	// QueryOrgStatusesRequestIncidentType contains the acceptable values for the
+	// QueryOrgStatusesRequest.IncidentType field.
+	QueryOrgStatusesRequestIncidentType struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Private == "private"
+		Private string
+	}
+
+	// RecordFieldValueRequestTargetKind contains the acceptable values for the
+	// RecordFieldValueRequest.TargetKind field.
+	RecordFieldValueRequestTargetKind struct {
+
+		// Incident == "incident"
+		Incident string
+	}
+
+	// StatusIncidentType contains the acceptable values for the
+	// Status.IncidentType field.
+	StatusIncidentType struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Private == "private"
+		Private string
+	}
+
+	// StatusCategory contains the acceptable values for the
+	// Status.Category field.
+	StatusCategory struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// StatusIcon contains the acceptable values for the
+	// Status.Icon field.
+	StatusIcon struct {
+
+		// Clock == "clock"
+		Clock string
+
+		// InfoCircle == "info-circle"
+		InfoCircle string
+
+		// ExclamationCircle == "exclamation-circle"
+		ExclamationCircle string
+
+		// QuestionCircle == "question-circle"
+		QuestionCircle string
+
+		// CheckCircle == "check-circle"
+		CheckCircle string
+	}
+
+	// StatusConfigurationIncidentType contains the acceptable values for the
+	// StatusConfiguration.IncidentType field.
+	StatusConfigurationIncidentType struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Private == "private"
+		Private string
+	}
+
 	// TaskStatus contains the acceptable values for the
 	// Task.Status field.
 	TaskStatus struct {
@@ -11011,6 +12105,48 @@ var Options struct {
 
 		// Private == "private"
 		Private string
+	}
+
+	// UpdateOrgStatusRequestIncidentType contains the acceptable values for the
+	// UpdateOrgStatusRequest.IncidentType field.
+	UpdateOrgStatusRequestIncidentType struct {
+
+		// Internal == "internal"
+		Internal string
+
+		// Private == "private"
+		Private string
+	}
+
+	// UpdateOrgStatusRequestCategory contains the acceptable values for the
+	// UpdateOrgStatusRequest.Category field.
+	UpdateOrgStatusRequestCategory struct {
+
+		// Active == "active"
+		Active string
+
+		// Resolved == "resolved"
+		Resolved string
+	}
+
+	// UpdateOrgStatusRequestIcon contains the acceptable values for the
+	// UpdateOrgStatusRequest.Icon field.
+	UpdateOrgStatusRequestIcon struct {
+
+		// Clock == "clock"
+		Clock string
+
+		// InfoCircle == "info-circle"
+		InfoCircle string
+
+		// ExclamationCircle == "exclamation-circle"
+		ExclamationCircle string
+
+		// QuestionCircle == "question-circle"
+		QuestionCircle string
+
+		// CheckCircle == "check-circle"
+		CheckCircle string
 	}
 
 	// UpdateStatusRequestStatus contains the acceptable values for the
@@ -11147,6 +12283,24 @@ func init() {
 
 	Options.CreateKeyUpdateRequestScope.Private = "private"
 
+	Options.CreateOrgStatusRequestIncidentType.Internal = "internal"
+
+	Options.CreateOrgStatusRequestIncidentType.Private = "private"
+
+	Options.CreateOrgStatusRequestCategory.Active = "active"
+
+	Options.CreateOrgStatusRequestCategory.Resolved = "resolved"
+
+	Options.CreateOrgStatusRequestIcon.Clock = "clock"
+
+	Options.CreateOrgStatusRequestIcon.InfoCircle = "info-circle"
+
+	Options.CreateOrgStatusRequestIcon.ExclamationCircle = "exclamation-circle"
+
+	Options.CreateOrgStatusRequestIcon.QuestionCircle = "question-circle"
+
+	Options.CreateOrgStatusRequestIcon.CheckCircle = "check-circle"
+
 	Options.CustomMetadataFieldType.String = "string"
 
 	Options.CustomMetadataFieldType.SingleSelect = "single-select"
@@ -11245,6 +12399,10 @@ func init() {
 
 	Options.HookRunStatus.Failed = "failed"
 
+	Options.IncidentIncidentType.Internal = "internal"
+
+	Options.IncidentIncidentType.Private = "private"
+
 	Options.IncidentStatus.Active = "active"
 
 	Options.IncidentStatus.Resolved = "resolved"
@@ -11325,6 +12483,34 @@ func init() {
 
 	Options.KeyUpdatesQueryContentType.TextMarkdownMsteams = "text/markdown+msteams"
 
+	Options.QueryOrgStatusesRequestIncidentType.Internal = "internal"
+
+	Options.QueryOrgStatusesRequestIncidentType.Private = "private"
+
+	Options.RecordFieldValueRequestTargetKind.Incident = "incident"
+
+	Options.StatusIncidentType.Internal = "internal"
+
+	Options.StatusIncidentType.Private = "private"
+
+	Options.StatusCategory.Active = "active"
+
+	Options.StatusCategory.Resolved = "resolved"
+
+	Options.StatusIcon.Clock = "clock"
+
+	Options.StatusIcon.InfoCircle = "info-circle"
+
+	Options.StatusIcon.ExclamationCircle = "exclamation-circle"
+
+	Options.StatusIcon.QuestionCircle = "question-circle"
+
+	Options.StatusIcon.CheckCircle = "check-circle"
+
+	Options.StatusConfigurationIncidentType.Internal = "internal"
+
+	Options.StatusConfigurationIncidentType.Private = "private"
+
 	Options.TaskStatus.Todo = "todo"
 
 	Options.TaskStatus.Progress = "progress"
@@ -11368,6 +12554,24 @@ func init() {
 	Options.UpdateKeyUpdateRequestScope.Public = "public"
 
 	Options.UpdateKeyUpdateRequestScope.Private = "private"
+
+	Options.UpdateOrgStatusRequestIncidentType.Internal = "internal"
+
+	Options.UpdateOrgStatusRequestIncidentType.Private = "private"
+
+	Options.UpdateOrgStatusRequestCategory.Active = "active"
+
+	Options.UpdateOrgStatusRequestCategory.Resolved = "resolved"
+
+	Options.UpdateOrgStatusRequestIcon.Clock = "clock"
+
+	Options.UpdateOrgStatusRequestIcon.InfoCircle = "info-circle"
+
+	Options.UpdateOrgStatusRequestIcon.ExclamationCircle = "exclamation-circle"
+
+	Options.UpdateOrgStatusRequestIcon.QuestionCircle = "question-circle"
+
+	Options.UpdateOrgStatusRequestIcon.CheckCircle = "check-circle"
 
 	Options.UpdateStatusRequestStatus.Active = "active"
 
