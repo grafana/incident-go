@@ -1,4 +1,4 @@
-package incident
+package incident_test
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	incident "github.com/grafana/incident-go"
 	"github.com/matryer/is"
 )
 
@@ -20,13 +21,13 @@ func TestVerifySignature(t *testing.T) {
 	goodRequest, err := http.NewRequest(method, url, strings.NewReader(testPayload))
 	is.NoErr(err)
 	goodRequest.Header.Set("gi-signature", "t=1678360185,v1=66ed620915831e9ab71604bf35d9b7cf2e71978ed6e62be6fd0e5194289849c7")
-	err = VerifySignature(goodRequest, secret) // valid gi-signature
+	err = incident.VerifySignature(goodRequest, secret) // valid gi-signature
 	is.NoErr(err)
 
 	badRequest, err := http.NewRequest(method, url, strings.NewReader(testPayload))
 	is.NoErr(err)
 	badRequest.Header.Set("gi-signature", "t=123456,v1=some-bad-signature")
-	err = VerifySignature(badRequest, secret)
+	err = incident.VerifySignature(badRequest, secret)
 	is.Equal(err, errors.New("invalid GI-Signature")) // invalid gi-signature
 }
 
@@ -40,11 +41,11 @@ func TestParseWebhook(t *testing.T) {
 
 	request, err := http.NewRequest("POST", testURL, strings.NewReader(testPayload))
 	is.NoErr(err)
-	bodyHash := Hash([]byte(testPayload))
+	bodyHash := incident.Hash([]byte(testPayload))
 	stringToSign := bodyHash + ":" + unixTime + ":v1"
-	signature := GenerateSignature([]byte(stringToSign), testSecret)
+	signature := incident.GenerateSignature([]byte(stringToSign), testSecret)
 	request.Header.Set("GI-Signature", fmt.Sprintf("t=%s,v1=%s", unixTime, signature))
-	parsed, err := ParseWebhook(request, testSecret)
+	parsed, err := incident.ParseWebhook(request, testSecret)
 	is.NoErr(err)
 	is.Equal(parsed.ID, "webhook-out-6409be79a7ee628da2a70dbe") // parsed.ID
 }

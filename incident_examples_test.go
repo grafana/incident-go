@@ -8,11 +8,11 @@ import (
 	incident "github.com/grafana/incident-go"
 )
 
-// ExampleCreateIncident shows how to create an incident.
+// ExampleIncidentsService_CreateIncident shows how to create an incident.
 // It uses the incident.NewTestClient so all responses are stubbed,
 // you should use incident.NewClient, specifying the API endpoint
 // and the service account token to send with the requests.
-func ExampleCreateIncident() {
+func ExampleIncidentsService_CreateIncident() {
 	ctx := context.Background()
 	client := incident.NewTestClient()
 	incidentsService := incident.NewIncidentsService(client)
