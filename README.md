@@ -36,6 +36,21 @@ if err != nil {
 fmt.Println("declared Incident", createIncidentResp.Incident.IncidentID)
 ```
 
+## On-behalf-of authentication
+
+If you need to make API calls on behalf of a specific Grafana user (rather than
+as a service account), use `NewOnBehalfOfClient` with the user's access token
+and ID token:
+
+```go
+client := incident.NewOnBehalfOfClient(
+	"https://your-stack.grafana.net/api/plugins/grafana-irm-app/resources/api/v1",
+	accessToken,
+	idToken,
+)
+incidentsService := incident.NewIncidentsService(client)
+```
+
 ## Handle webhooks from Grafana Incident
 
 You can use the [Outgoing Webhook integration](https://grafana.com/docs/grafana-cloud/incident/integrations/configure-outgoing-webhooks/) to get Grafana Incident to POST a request on specific events.
