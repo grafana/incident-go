@@ -506,6 +506,39 @@ type CreateIncidentResponse struct {
 	Incident Incident `json:"incident"`
 }
 
+// CreateIncidentSlackChannelRequest is the request for the
+// CreateIncidentSlackChannel method.
+type CreateIncidentSlackChannelRequest struct {
+
+	// IncidentID is the identifier of the Incident to create the channel for.
+	IncidentID string `json:"incidentID"`
+
+	// ChannelName is the desired Slack channel name. It will be sanitized (lowercased,
+	// special characters removed) before being passed to Slack.
+	ChannelName string `json:"channelName"`
+
+	// PostUpdates controls whether incident activity updates are posted to the
+	// resulting channel. Stored on the HookRun metadata.
+	PostUpdates bool `json:"postUpdates"`
+
+	// InviteUsers controls whether users with an active role on the incident are
+	// invited to the channel when their role is assigned. Stored on the HookRun
+	// metadata.
+	InviteUsers bool `json:"inviteUsers"`
+}
+
+// CreateIncidentSlackChannelResponse is the response for the
+// CreateIncidentSlackChannel method.
+type CreateIncidentSlackChannelResponse struct {
+
+	// ChannelID is the Slack channel ID returned by Slack after channel creation.
+	ChannelID string `json:"channelID"`
+
+	// ChannelName is the actual channel name created in Slack. This may differ from
+	// the requested name if a suffix was appended due to a name collision.
+	ChannelName string `json:"channelName"`
+}
+
 // CreateKeyUpdateRequest is the request for the CreateKeyUpdate method.
 type CreateKeyUpdateRequest struct {
 
@@ -5041,6 +5074,73 @@ func NewIntegrationService(client *Client) *IntegrationService {
 	return &IntegrationService{
 		client: client,
 	}
+}
+
+// CreateIncidentSlackChannel creates a Slack channel for an Incident by invoking
+// the createChannel hook without requiring an EnabledHook. The postUpdates and
+// inviteUsers flags are stored on the resulting HookRun metadata. Only one Slack
+// channel may exist per incident. If the incident already has a channel (created
+// via this endpoint or via an enabled hook), the call returns an error. A previous
+// failed attempt may be retried.
+func (s *IntegrationService) CreateIncidentSlackChannel(ctx context.Context, r CreateIncidentSlackChannelRequest) (*CreateIncidentSlackChannelResponse, error) {
+	if s.client.stubmode {
+		return s.stubCreateIncidentSlackChannel()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: marshal CreateIncidentSlackChannelRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "IntegrationService.CreateIncidentSlackChannel"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		CreateIncidentSlackChannelResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: read response body: %w", err)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: (%d) %v", resp.StatusCode, string(respBodyBytes))
+		}
+		return nil, err
+	}
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.CreateIncidentSlackChannelResponse, nil
 }
 
 // DisableHook disables a Hook.
@@ -10213,6 +10313,19 @@ func (s *IncidentsService) stubUpdateTitle() (*UpdateTitleResponse, error) {
 	var dest UpdateTitleResponse
 	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
 		return nil, fmt.Errorf("stubUpdateTitle: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *IntegrationService) stubCreateIncidentSlackChannel() (*CreateIncidentSlackChannelResponse, error) {
+	exampleJSON := `{
+	"channelID": "C075GNJ6E84",
+	"channelName": "inc-database-outage",
+	"error": "something went wrong"
+}`
+	var dest CreateIncidentSlackChannelResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubCreateIncidentSlackChannel: json.Unmarshal: %w", err)
 	}
 	return &dest, nil
 }
