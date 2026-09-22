@@ -36,6 +36,49 @@ if err != nil {
 fmt.Println("declared Incident", createIncidentResp.Incident.IncidentID)
 ```
 
+## Handle specific errors from the API
+
+When a request fails, the client returns an `*incident.APIError` describing what
+went wrong. Use `errors.As` to get the specific error and compare the `Code` field against
+the generated `ErrorCode` constants instead of matching error strings:
+
+```go
+import (
+	"errors"
+
+	incident "github.com/grafana/incident-go"
+)
+
+getIncidentResp, err := incidentsService.GetIncident(ctx, incident.GetIncidentRequest{
+	IncidentID: incidentID,
+})
+if err != nil {
+	var apiErr *incident.APIError
+	if errors.As(err, &apiErr) && apiErr.Code == incident.ErrIncidentNotFound {
+		// Handle specific error before returning.
+		return err
+	}
+	return fmt.Errorf("get incident: %w", err)
+}
+// success, get the details from the getIncidentResp object
+fmt.Println("Incident status", getIncidentResp.Incident.Status)
+```
+
+For the common case of checking a single code, `incident.HasErrorCode` does the
+same thing in one call:
+
+```go
+if incident.HasErrorCode(err, incident.ErrIncidentNotFound) {
+	return nil
+}
+```
+
+Two things to keep in mind:
+
+- Error responses that arrive with an empty or non-JSON body (a proxy timeout or
+  a gateway's HTML error page, for example) cannot be parsed into an `APIError`,
+  so `errors.As` will not match. Always keep a fallback path for a plain `error`.
+
 ## Handle webhooks from Grafana Incident
 
 You can use the [Outgoing Webhook integration](https://grafana.com/docs/grafana-cloud/incident/integrations/configure-outgoing-webhooks/) to get Grafana Incident to POST a request on specific events.

@@ -71,6 +71,77 @@ func NewTestClient() *Client {
 	return c
 }
 
+// APIError is a structured error returned by the API when a request fails.
+// It follows RFC 7807 (application/problem+json) and exposes stable,
+// machine-readable fields so callers can branch on Code, HTTPStatusCode, or
+// Retryable with errors.As instead of matching human-readable strings.
+//
+//	var apiErr *incident.APIError
+//	if errors.As(err, &apiErr) && apiErr.Code == "roles.not_found" {
+//		// resource is gone; drop it from local state
+//	}
+type APIError struct {
+	// HTTPStatusCode is the HTTP status code of the response. It is always set,
+	// even when the body omits the RFC 7807 status field.
+	HTTPStatusCode int `json:"-"`
+	// Type is a URI identifying the problem type.
+	Type string `json:"type"`
+	// Title is a short, human-readable summary of the problem type.
+	Title string `json:"title"`
+	// Status is the HTTP status code echoed in the problem body (RFC 7807).
+	Status int `json:"status"`
+	// Detail is a human-readable explanation specific to this occurrence.
+	Detail string `json:"detail"`
+	// Instance is a URI identifying this specific occurrence.
+	Instance string `json:"instance"`
+	// Code is the application error code, e.g. "roles.not_found". Compare it
+	// against the generated ErrorCode constants (see errorcodes.gen.go) or use
+	// HasErrorCode rather than matching strings.
+	Code ErrorCode `json:"code"`
+	// TraceID correlates the error with server-side telemetry.
+	TraceID string `json:"trace_id"`
+	// Hint is actionable guidance for the API consumer.
+	Hint string `json:"hint"`
+	// Retryable reports whether repeating the request may succeed.
+	Retryable bool `json:"retryable"`
+	// Context holds additional key-value details about the error.
+	Context map[string]interface{} `json:"context"`
+	// LegacyError carries the pre-RFC-7807 error string for backward
+	// compatibility. New code should read Detail and Code instead.
+	LegacyError string `json:"error"`
+}
+
+// Error implements the error interface. It prefers the RFC 7807 detail, then
+// the legacy error string, then the code, so the message is stable across the
+// migration to structured errors.
+func (e *APIError) Error() string {
+	switch {
+	case e.Detail != "":
+		return e.Detail
+	case e.LegacyError != "":
+		return e.LegacyError
+	case e.Code != "":
+		return string(e.Code)
+	default:
+		return fmt.Sprintf("request failed with status %d", e.HTTPStatusCode)
+	}
+}
+
+// newAPIError builds an APIError from a non-2xx response. It parses the
+// RFC 7807 problem details when present and falls back to the raw body for
+// servers that have not adopted the structured format.
+func newAPIError(method string, statusCode int, body []byte) error {
+	apiErr := &APIError{HTTPStatusCode: statusCode, Status: statusCode}
+	if err := json.Unmarshal(body, apiErr); err != nil {
+		// Body is not JSON (an older server or an intermediary error page).
+		return fmt.Errorf("%s: (%d) %s", method, statusCode, string(body))
+	}
+	if apiErr.Status == 0 {
+		apiErr.Status = statusCode
+	}
+	return apiErr
+}
+
 // ActivityItem describes an event that occurred related to an Incident.
 type ActivityItem struct {
 
@@ -2602,12 +2673,13 @@ func (s *ActivityService) AddActivity(ctx context.Context, r AddActivityRequest)
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.AddActivity: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("ActivityService.AddActivity: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("ActivityService.AddActivity", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("ActivityService.AddActivity: unmarshal AddActivityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -2664,12 +2736,13 @@ func (s *ActivityService) QueryActivity(ctx context.Context, r QueryActivityRequ
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.QueryActivity: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("ActivityService.QueryActivity: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("ActivityService.QueryActivity", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("ActivityService.QueryActivity: unmarshal QueryActivityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -2726,12 +2799,13 @@ func (s *ActivityService) RemoveActivity(ctx context.Context, r RemoveActivityRe
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.RemoveActivity: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("ActivityService.RemoveActivity: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("ActivityService.RemoveActivity", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("ActivityService.RemoveActivity: unmarshal RemoveActivityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -2788,12 +2862,13 @@ func (s *ActivityService) UpdateActivityBody(ctx context.Context, r UpdateActivi
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("ActivityService.UpdateActivityBody: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("ActivityService.UpdateActivityBody", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityBody: unmarshal UpdateActivityBodyResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -2850,12 +2925,13 @@ func (s *ActivityService) UpdateActivityEventTime(ctx context.Context, r UpdateA
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("ActivityService.UpdateActivityEventTime", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityEventTime: unmarshal UpdateActivityEventTimeResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -2912,12 +2988,13 @@ func (s *ActivityService) UpdateActivityRelevance(ctx context.Context, r UpdateA
 	if err != nil {
 		return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("ActivityService.UpdateActivityRelevance", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("ActivityService.UpdateActivityRelevance: unmarshal UpdateActivityRelevanceResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -2988,12 +3065,13 @@ func (s *FieldsService) AddField(ctx context.Context, r AddFieldRequest) (*AddFi
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddField: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.AddField: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.AddField", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.AddField: unmarshal AddFieldResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3050,12 +3128,13 @@ func (s *FieldsService) AddFieldSelectOption(ctx context.Context, r AddFieldSele
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.AddFieldSelectOption", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.AddFieldSelectOption: unmarshal AddFieldSelectOptionResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3112,12 +3191,13 @@ func (s *FieldsService) AddLabelKey(ctx context.Context, r AddLabelKeyRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddLabelKey: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.AddLabelKey: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.AddLabelKey", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelKey: unmarshal AddLabelKeyResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3174,12 +3254,13 @@ func (s *FieldsService) AddLabelValue(ctx context.Context, r AddLabelValueReques
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.AddLabelValue: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.AddLabelValue: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.AddLabelValue", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.AddLabelValue: unmarshal AddLabelValueResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3236,12 +3317,13 @@ func (s *FieldsService) ArchiveField(ctx context.Context, r ArchiveFieldRequest)
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.ArchiveField: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.ArchiveField: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.ArchiveField", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.ArchiveField: unmarshal ArchiveFieldResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3298,12 +3380,13 @@ func (s *FieldsService) DeleteField(ctx context.Context, r DeleteFieldRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.DeleteField: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.DeleteField: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.DeleteField", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteField: unmarshal DeleteFieldResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3360,12 +3443,13 @@ func (s *FieldsService) DeleteFieldSelectOption(ctx context.Context, r DeleteFie
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.DeleteFieldSelectOption", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.DeleteFieldSelectOption: unmarshal DeleteFieldSelectOptionResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3422,12 +3506,13 @@ func (s *FieldsService) GetField(ctx context.Context, r GetFieldRequest) (*GetFi
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.GetField: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.GetField: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.GetField", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.GetField: unmarshal GetFieldResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3484,12 +3569,13 @@ func (s *FieldsService) GetFieldValues(ctx context.Context, r GetFieldValuesRequ
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.GetFieldValues: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.GetFieldValues: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.GetFieldValues", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFieldValues: unmarshal GetFieldValuesResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3546,12 +3632,13 @@ func (s *FieldsService) GetFields(ctx context.Context, r GetFieldsRequest) (*Get
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.GetFields: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.GetFields: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.GetFields", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.GetFields: unmarshal GetFieldsResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3608,12 +3695,13 @@ func (s *FieldsService) RecordFieldValue(ctx context.Context, r RecordFieldValue
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.RecordFieldValue: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.RecordFieldValue: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.RecordFieldValue", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.RecordFieldValue: unmarshal RecordFieldValueResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3670,12 +3758,13 @@ func (s *FieldsService) UnarchiveField(ctx context.Context, r UnarchiveFieldRequ
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.UnarchiveField: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.UnarchiveField: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.UnarchiveField", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.UnarchiveField: unmarshal UnarchiveFieldResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3732,12 +3821,13 @@ func (s *FieldsService) UpdateField(ctx context.Context, r UpdateFieldRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.UpdateField: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.UpdateField: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.UpdateField", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateField: unmarshal UpdateFieldResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3794,12 +3884,13 @@ func (s *FieldsService) UpdateFieldSelectOption(ctx context.Context, r UpdateFie
 	if err != nil {
 		return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("FieldsService.UpdateFieldSelectOption", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("FieldsService.UpdateFieldSelectOption: unmarshal UpdateFieldSelectOptionResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3871,12 +3962,13 @@ func (s *IncidentsService) AddLabel(ctx context.Context, r AddLabelRequest) (*Ad
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AddLabel: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.AddLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.AddLabel", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.AddLabel: unmarshal AddLabelResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3933,12 +4025,13 @@ func (s *IncidentsService) AssignLabel(ctx context.Context, r AssignLabelRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AssignLabel: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.AssignLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.AssignLabel", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabel: unmarshal AssignLabelResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -3995,12 +4088,13 @@ func (s *IncidentsService) AssignLabelByUUID(ctx context.Context, r AssignLabelB
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.AssignLabelByUUID", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignLabelByUUID: unmarshal AssignLabelByUUIDResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4057,12 +4151,13 @@ func (s *IncidentsService) AssignRole(ctx context.Context, r AssignRoleRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.AssignRole: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.AssignRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.AssignRole", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.AssignRole: unmarshal AssignRoleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4119,12 +4214,13 @@ func (s *IncidentsService) CreateIncident(ctx context.Context, r CreateIncidentR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.CreateIncident: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.CreateIncident: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.CreateIncident", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.CreateIncident: unmarshal CreateIncidentResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4181,12 +4277,13 @@ func (s *IncidentsService) GetIncident(ctx context.Context, r GetIncidentRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetIncident: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.GetIncident: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.GetIncident", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncident: unmarshal GetIncidentResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4243,12 +4340,13 @@ func (s *IncidentsService) GetIncidentChannels(ctx context.Context, r GetInciden
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.GetIncidentChannels", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentChannels: unmarshal GetIncidentChannelsResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4306,12 +4404,13 @@ func (s *IncidentsService) GetIncidentMembership(ctx context.Context, r GetIncid
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.GetIncidentMembership", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetIncidentMembership: unmarshal GetIncidentMembershipResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4368,12 +4467,13 @@ func (s *IncidentsService) GetLabels(ctx context.Context, r GetLabelsRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.GetLabels: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.GetLabels: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.GetLabels", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.GetLabels: unmarshal GetLabelsResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4430,12 +4530,13 @@ func (s *IncidentsService) QueryIncidentPreviews(ctx context.Context, r QueryInc
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.QueryIncidentPreviews", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.QueryIncidentPreviews: unmarshal QueryIncidentPreviewsResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4493,12 +4594,13 @@ func (s *IncidentsService) QueryIncidents(ctx context.Context, r QueryIncidentsR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.QueryIncidents: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.QueryIncidents: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.QueryIncidents", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.QueryIncidents: unmarshal QueryIncidentsResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4555,12 +4657,13 @@ func (s *IncidentsService) RemoveLabel(ctx context.Context, r RemoveLabelRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.RemoveLabel: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.RemoveLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.RemoveLabel", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.RemoveLabel: unmarshal RemoveLabelResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4617,12 +4720,13 @@ func (s *IncidentsService) UnassignLabel(ctx context.Context, r UnassignLabelReq
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UnassignLabel: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UnassignLabel: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UnassignLabel", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabel: unmarshal UnassignLabelResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4679,12 +4783,13 @@ func (s *IncidentsService) UnassignLabelByUUID(ctx context.Context, r UnassignLa
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UnassignLabelByUUID", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignLabelByUUID: unmarshal UnassignLabelByUUIDResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4741,12 +4846,13 @@ func (s *IncidentsService) UnassignRole(ctx context.Context, r UnassignRoleReque
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UnassignRole: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UnassignRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UnassignRole", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UnassignRole: unmarshal UnassignRoleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4803,12 +4909,13 @@ func (s *IncidentsService) UpdateIncidentEventTime(ctx context.Context, r Update
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UpdateIncidentEventTime", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentEventTime: unmarshal UpdateIncidentEventTimeResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4865,12 +4972,13 @@ func (s *IncidentsService) UpdateIncidentIsDrill(ctx context.Context, r UpdateIn
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UpdateIncidentIsDrill", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UpdateIncidentIsDrill: unmarshal UpdateIncidentIsDrillResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4927,12 +5035,13 @@ func (s *IncidentsService) UpdateSeverity(ctx context.Context, r UpdateSeverityR
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UpdateSeverity: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UpdateSeverity", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UpdateSeverity: unmarshal UpdateSeverityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -4989,12 +5098,13 @@ func (s *IncidentsService) UpdateStatus(ctx context.Context, r UpdateStatusReque
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateStatus: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UpdateStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UpdateStatus", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UpdateStatus: unmarshal UpdateStatusResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5051,12 +5161,13 @@ func (s *IncidentsService) UpdateTitle(ctx context.Context, r UpdateTitleRequest
 	if err != nil {
 		return nil, fmt.Errorf("IncidentsService.UpdateTitle: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IncidentsService.UpdateTitle: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IncidentsService.UpdateTitle", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IncidentsService.UpdateTitle: unmarshal UpdateTitleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5131,12 +5242,13 @@ func (s *IntegrationService) CreateIncidentSlackChannel(ctx context.Context, r C
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IntegrationService.CreateIncidentSlackChannel", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IntegrationService.CreateIncidentSlackChannel: unmarshal CreateIncidentSlackChannelResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5193,12 +5305,13 @@ func (s *IntegrationService) DisableHook(ctx context.Context, r DisableHookReque
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.DisableHook: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IntegrationService.DisableHook: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IntegrationService.DisableHook", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IntegrationService.DisableHook: unmarshal DisableHookResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5255,12 +5368,13 @@ func (s *IntegrationService) EnableHook(ctx context.Context, r EnableHookRequest
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.EnableHook: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IntegrationService.EnableHook: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IntegrationService.EnableHook", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IntegrationService.EnableHook: unmarshal EnableHookResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5317,12 +5431,13 @@ func (s *IntegrationService) GetEnabledHooks(ctx context.Context, r GetEnabledHo
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IntegrationService.GetEnabledHooks", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetEnabledHooks: unmarshal GetEnabledHooksResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5379,12 +5494,13 @@ func (s *IntegrationService) GetHookRuns(ctx context.Context, r GetHookRunsReque
 	if err != nil {
 		return nil, fmt.Errorf("IntegrationService.GetHookRuns: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("IntegrationService.GetHookRuns: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("IntegrationService.GetHookRuns", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("IntegrationService.GetHookRuns: unmarshal GetHookRunsResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5456,12 +5572,13 @@ func (s *KeyUpdatesService) CreateKeyUpdate(ctx context.Context, r CreateKeyUpda
 	if err != nil {
 		return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("KeyUpdatesService.CreateKeyUpdate", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.CreateKeyUpdate: unmarshal CreateKeyUpdateResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5518,12 +5635,13 @@ func (s *KeyUpdatesService) DeleteKeyUpdate(ctx context.Context, r DeleteKeyUpda
 	if err != nil {
 		return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("KeyUpdatesService.DeleteKeyUpdate", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.DeleteKeyUpdate: unmarshal DeleteKeyUpdateResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5580,12 +5698,13 @@ func (s *KeyUpdatesService) GetInitialKeyUpdate(ctx context.Context, r GetInitia
 	if err != nil {
 		return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("KeyUpdatesService.GetInitialKeyUpdate", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetInitialKeyUpdate: unmarshal GetInitialKeyUpdateResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5642,12 +5761,13 @@ func (s *KeyUpdatesService) GetKeyUpdate(ctx context.Context, r GetKeyUpdateRequ
 	if err != nil {
 		return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("KeyUpdatesService.GetKeyUpdate", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetKeyUpdate: unmarshal GetKeyUpdateResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5704,12 +5824,13 @@ func (s *KeyUpdatesService) GetLastKeyUpdate(ctx context.Context, r GetLastKeyUp
 	if err != nil {
 		return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("KeyUpdatesService.GetLastKeyUpdate", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.GetLastKeyUpdate: unmarshal GetLastKeyUpdateResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5766,12 +5887,13 @@ func (s *KeyUpdatesService) QueryKeyUpdates(ctx context.Context, r QueryKeyUpdat
 	if err != nil {
 		return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("KeyUpdatesService.QueryKeyUpdates", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.QueryKeyUpdates: unmarshal QueryKeyUpdatesResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5828,12 +5950,13 @@ func (s *KeyUpdatesService) UpdateKeyUpdate(ctx context.Context, r UpdateKeyUpda
 	if err != nil {
 		return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("KeyUpdatesService.UpdateKeyUpdate", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("KeyUpdatesService.UpdateKeyUpdate: unmarshal UpdateKeyUpdateResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5904,12 +6027,13 @@ func (s *RolesService) ArchiveRole(ctx context.Context, r ArchiveRoleRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.ArchiveRole: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("RolesService.ArchiveRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("RolesService.ArchiveRole", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("RolesService.ArchiveRole: unmarshal ArchiveRoleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -5966,12 +6090,13 @@ func (s *RolesService) CreateRole(ctx context.Context, r CreateRoleRequest) (*Cr
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.CreateRole: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("RolesService.CreateRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("RolesService.CreateRole", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("RolesService.CreateRole: unmarshal CreateRoleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6028,12 +6153,13 @@ func (s *RolesService) DeleteRole(ctx context.Context, r DeleteRoleRequest) (*De
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.DeleteRole: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("RolesService.DeleteRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("RolesService.DeleteRole", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("RolesService.DeleteRole: unmarshal DeleteRoleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6090,12 +6216,13 @@ func (s *RolesService) GetRoles(ctx context.Context, r GetRolesRequest) (*GetRol
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.GetRoles: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("RolesService.GetRoles: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("RolesService.GetRoles", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("RolesService.GetRoles: unmarshal GetRolesResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6152,12 +6279,13 @@ func (s *RolesService) UnarchiveRole(ctx context.Context, r UnarchiveRoleRequest
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.UnarchiveRole: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("RolesService.UnarchiveRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("RolesService.UnarchiveRole", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("RolesService.UnarchiveRole: unmarshal UnarchiveRoleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6214,12 +6342,13 @@ func (s *RolesService) UpdateRole(ctx context.Context, r UpdateRoleRequest) (*Up
 	if err != nil {
 		return nil, fmt.Errorf("RolesService.UpdateRole: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("RolesService.UpdateRole: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("RolesService.UpdateRole", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("RolesService.UpdateRole: unmarshal UpdateRoleResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6289,12 +6418,13 @@ func (s *StatusService) CreateOrgStatus(ctx context.Context, r CreateOrgStatusRe
 	if err != nil {
 		return nil, fmt.Errorf("StatusService.CreateOrgStatus: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("StatusService.CreateOrgStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("StatusService.CreateOrgStatus", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("StatusService.CreateOrgStatus: unmarshal CreateOrgStatusResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6351,12 +6481,13 @@ func (s *StatusService) GetStatusByID(ctx context.Context, r GetStatusByIDReques
 	if err != nil {
 		return nil, fmt.Errorf("StatusService.GetStatusByID: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("StatusService.GetStatusByID: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("StatusService.GetStatusByID", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("StatusService.GetStatusByID: unmarshal GetStatusByIDResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6413,12 +6544,13 @@ func (s *StatusService) QueryOrgStatuses(ctx context.Context, r QueryOrgStatuses
 	if err != nil {
 		return nil, fmt.Errorf("StatusService.QueryOrgStatuses: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("StatusService.QueryOrgStatuses: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("StatusService.QueryOrgStatuses", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("StatusService.QueryOrgStatuses: unmarshal QueryOrgStatusesResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6475,12 +6607,13 @@ func (s *StatusService) UpdateOrgStatus(ctx context.Context, r UpdateOrgStatusRe
 	if err != nil {
 		return nil, fmt.Errorf("StatusService.UpdateOrgStatus: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("StatusService.UpdateOrgStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("StatusService.UpdateOrgStatus", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("StatusService.UpdateOrgStatus: unmarshal UpdateOrgStatusResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6550,12 +6683,13 @@ func (s *TasksService) AddTask(ctx context.Context, r AddTaskRequest) (*AddTaskR
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.AddTask: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("TasksService.AddTask: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("TasksService.AddTask", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("TasksService.AddTask: unmarshal AddTaskResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6612,12 +6746,13 @@ func (s *TasksService) DeleteTask(ctx context.Context, r DeleteTaskRequest) (*De
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.DeleteTask: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("TasksService.DeleteTask: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("TasksService.DeleteTask", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("TasksService.DeleteTask: unmarshal DeleteTaskResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6674,12 +6809,13 @@ func (s *TasksService) UpdateTaskStatus(ctx context.Context, r UpdateTaskStatusR
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("TasksService.UpdateTaskStatus: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("TasksService.UpdateTaskStatus", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskStatus: unmarshal UpdateTaskStatusResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6736,12 +6872,13 @@ func (s *TasksService) UpdateTaskText(ctx context.Context, r UpdateTaskTextReque
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskText: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("TasksService.UpdateTaskText: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("TasksService.UpdateTaskText", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskText: unmarshal UpdateTaskTextResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6799,12 +6936,13 @@ func (s *TasksService) UpdateTaskUser(ctx context.Context, r UpdateTaskUserReque
 	if err != nil {
 		return nil, fmt.Errorf("TasksService.UpdateTaskUser: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("TasksService.UpdateTaskUser: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("TasksService.UpdateTaskUser", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("TasksService.UpdateTaskUser: unmarshal UpdateTaskUserResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6874,12 +7012,13 @@ func (s *UsersService) GetUser(ctx context.Context, r GetUserRequest) (*GetUserR
 	if err != nil {
 		return nil, fmt.Errorf("UsersService.GetUser: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("UsersService.GetUser: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("UsersService.GetUser", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("UsersService.GetUser: unmarshal GetUserResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
@@ -6936,12 +7075,13 @@ func (s *UsersService) QueryUsers(ctx context.Context, r QueryUsersRequest) (*Qu
 	if err != nil {
 		return nil, fmt.Errorf("UsersService.QueryUsers: read response body: %w", err)
 	}
-	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("UsersService.QueryUsers: (%d) %v", resp.StatusCode, string(respBodyBytes))
-		}
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("UsersService.QueryUsers", resp.StatusCode, respBodyBytes)
 	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("UsersService.QueryUsers: unmarshal QueryUsersResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
 	}
