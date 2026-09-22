@@ -78,8 +78,6 @@ Two things to keep in mind:
 - Error responses that arrive with an empty or non-JSON body (a proxy timeout or
   a gateway's HTML error page, for example) cannot be parsed into an `APIError`,
   so `errors.As` will not match. Always keep a fallback path for a plain `error`.
-- `APIError.LegacyError` carries the pre-RFC-7807 error string, and is only
-  there for backward compatibility. New code should read `Detail` and `Code`.
 
 ## Handle webhooks from Grafana Incident
 
