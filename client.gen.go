@@ -373,6 +373,17 @@ type ArchiveFieldRequest struct {
 type ArchiveFieldResponse struct {
 }
 
+// ArchiveOrgSeverityRequest is the request to archive a severity.
+type ArchiveOrgSeverityRequest struct {
+
+	// SeverityID is the unique ID of the severity to be archived.
+	SeverityID string `json:"severityID"`
+}
+
+// ArchiveOrgSeverityResponse is the response to archive a severity.
+type ArchiveOrgSeverityResponse struct {
+}
+
 // ArchiveRoleRequest is the request to archive a role.
 type ArchiveRoleRequest struct {
 
@@ -645,6 +656,20 @@ type CreateKeyUpdateResponse struct {
 	KeyUpdate KeyUpdate `json:"keyUpdate"`
 }
 
+// CreateOrgSeverityRequest is the request to create a severity.
+type CreateOrgSeverityRequest struct {
+
+	// Severity to be created in the organization.
+	Severity Severity `json:"severity"`
+}
+
+// CreateOrgSeverityResponse is the response to create a severity.
+type CreateOrgSeverityResponse struct {
+
+	// Severity is the newly created severity.
+	Severity Severity `json:"severity"`
+}
+
 // CreateOrgStatusRequest is the request for CreateOrgStatus.
 type CreateOrgStatusRequest struct {
 
@@ -835,6 +860,17 @@ type DeleteKeyUpdateRequest struct {
 
 // DeleteKeyUpdateResponse is the response for the DeleteKeyUpdate method.
 type DeleteKeyUpdateResponse struct {
+}
+
+// DeleteOrgSeverityRequest is the request to delete a severity.
+type DeleteOrgSeverityRequest struct {
+
+	// SeverityID is the unique ID of the severity to be deleted.
+	SeverityID string `json:"severityID"`
+}
+
+// DeleteOrgSeverityResponse is the response to delete a severity.
+type DeleteOrgSeverityResponse struct {
 }
 
 // DeleteRoleRequest is the request to delete a role.
@@ -1201,6 +1237,18 @@ type GetLastKeyUpdateResponse struct {
 	KeyUpdateCount int `json:"keyUpdateCount"`
 }
 
+// GetOrgSeveritiesRequest is the request to get all severities.
+type GetOrgSeveritiesRequest struct {
+}
+
+// GetOrgSeveritiesResponse is the response to get all severities.
+type GetOrgSeveritiesResponse struct {
+
+	// Severities is the list of severities in the organization, including archived
+	// ones.
+	Severities []Severity `json:"severities"`
+}
+
 // GetRolesRequest is the request to get all roles.
 type GetRolesRequest struct {
 }
@@ -1210,6 +1258,20 @@ type GetRolesResponse struct {
 
 	// Roles is the list of roles.
 	Roles []Role `json:"roles"`
+}
+
+// GetSeverityByIDRequest is the request to get a severity by ID.
+type GetSeverityByIDRequest struct {
+
+	// SeverityID is the unique ID of the severity.
+	SeverityID string `json:"severityID"`
+}
+
+// GetSeverityByIDResponse is the response to get a severity by ID.
+type GetSeverityByIDResponse struct {
+
+	// Severity is the requested severity.
+	Severity Severity `json:"severity"`
 }
 
 // GetStatusByIDRequest is the request for GetStatusByID.
@@ -1960,6 +2022,60 @@ type Role struct {
 	UpdatedAt string `json:"updatedAt"`
 }
 
+// Severity represents an incident severity.
+type Severity struct {
+
+	// SeverityID is the unique ID of this severity. It is generated on create and
+	// identifies the severity to change on update.
+	SeverityID string `json:"severityID"`
+
+	// OrgID is the unique ID of the organization this severity belongs to. This
+	// field is read-only. It is set from the caller's organization and is ignored by
+	// CreateOrgSeverity and UpdateOrgSeverity.
+	OrgID string `json:"orgID"`
+
+	// DisplayLabel is the label of the severity. Incidents reference this value
+	// as their Severity (and SeverityLabel). Labels must be unique within the
+	// organization, including archived severities. At most 255 characters.
+	DisplayLabel string `json:"displayLabel"`
+
+	// Level is the unique level of this severity. CreateOrgSeverity accepts levels
+	// from 1 to 5. Levels must be unique within the organization, including archived
+	// severities. The level cannot be changed after the severity is created. Level -1
+	// is used only by the system-managed Pending severity, which cannot be created,
+	// archived or deleted.
+	Level int `json:"level"`
+
+	// IconName is the icon of the severity that will be displayed in the UI and Slack.
+	// When set or changed, it must be one of angle-double-down, angle-double-up,
+	// bolt, bug, exclamation, exclamation-triangle, fire, question-circle or shield,
+	// or empty for none.
+	IconName string `json:"iconName"`
+
+	// Description is the description of the severity. At most 255 characters.
+	Description string `json:"description"`
+
+	// DarkColor is the color of the severity in dark mode. At most 255 characters.
+	DarkColor string `json:"darkColor"`
+
+	// LightColor is the color of the severity in light mode. At most 255 characters.
+	LightColor string `json:"lightColor"`
+
+	// ArchivedAt is the time this severity was archived at, or empty if it is active.
+	// Archived severities are hidden from the severity pickers in the UI and Slack,
+	// but incidents that already use them keep them. The API does not reject
+	// archived severities, so check ArchivedAt before assigning one. This field
+	// is read-only and is ignored by CreateOrgSeverity and UpdateOrgSeverity.
+	// Use ArchiveOrgSeverity and UnarchiveOrgSeverity to change it.
+	ArchivedAt string `json:"archivedAt"`
+
+	// CreatedAt is the time this severity was created at. This field is read-only.
+	CreatedAt string `json:"createdAt"`
+
+	// UpdatedAt is the time this severity was updated at. This field is read-only.
+	UpdatedAt string `json:"updatedAt"`
+}
+
 // Status represents an incident status definition.
 type Status struct {
 
@@ -2071,6 +2187,17 @@ type UnarchiveFieldRequest struct {
 
 // UnarchiveFieldResponse is the response from the UnarchiveField method.
 type UnarchiveFieldResponse struct {
+}
+
+// UnarchiveOrgSeverityRequest is the request to unarchive a severity.
+type UnarchiveOrgSeverityRequest struct {
+
+	// SeverityID is the unique ID of the severity to be unarchived.
+	SeverityID string `json:"severityID"`
+}
+
+// UnarchiveOrgSeverityResponse is the response to unarchive a severity.
+type UnarchiveOrgSeverityResponse struct {
 }
 
 // UnarchiveRoleRequest is the request to unarchive a role.
@@ -2370,6 +2497,23 @@ type UpdateKeyUpdateResponse struct {
 
 	// KeyUpdate is the modified key update.
 	KeyUpdate KeyUpdate `json:"keyUpdate"`
+}
+
+// UpdateOrgSeverityRequest is the request to update a severity.
+type UpdateOrgSeverityRequest struct {
+
+	// Severity to be updated in the organization, identified by SeverityID.
+	// DisplayLabel, Description, IconName, DarkColor and LightColor are replaced
+	// with the values sent, so omitted fields are cleared. Level, ArchivedAt and the
+	// timestamps are not changed.
+	Severity Severity `json:"severity"`
+}
+
+// UpdateOrgSeverityResponse is the response to update a severity.
+type UpdateOrgSeverityResponse struct {
+
+	// Severity is the updated severity.
+	Severity Severity `json:"severity"`
 }
 
 // UpdateOrgStatusRequest is the request for UpdateOrgStatus.
@@ -6353,6 +6497,470 @@ func (s *RolesService) UpdateRole(ctx context.Context, r UpdateRoleRequest) (*Up
 		return nil, errors.New(response.Error)
 	}
 	return &response.UpdateRoleResponse, nil
+}
+
+// SeveritiesService defines the interface for interacting with incident
+// severities.
+// Get one by calling NewSeveritiesService.
+type SeveritiesService struct {
+	client *Client
+}
+
+// NewSeveritiesService gets a new SeveritiesService.
+func NewSeveritiesService(client *Client) *SeveritiesService {
+	return &SeveritiesService{
+		client: client,
+	}
+}
+
+// ArchiveOrgSeverity archives a severity. The Pending severity is system-managed
+// and cannot be archived; attempting to do so returns a severities.system_managed
+// error.
+func (s *SeveritiesService) ArchiveOrgSeverity(ctx context.Context, r ArchiveOrgSeverityRequest) (*ArchiveOrgSeverityResponse, error) {
+	if s.client.stubmode {
+		return s.stubArchiveOrgSeverity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.ArchiveOrgSeverity: marshal ArchiveOrgSeverityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "SeveritiesService.ArchiveOrgSeverity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.ArchiveOrgSeverity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.ArchiveOrgSeverity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		ArchiveOrgSeverityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("SeveritiesService.ArchiveOrgSeverity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.ArchiveOrgSeverity: read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("SeveritiesService.ArchiveOrgSeverity", resp.StatusCode, respBodyBytes)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("SeveritiesService.ArchiveOrgSeverity: unmarshal ArchiveOrgSeverityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.ArchiveOrgSeverityResponse, nil
+}
+
+// CreateOrgSeverity creates a severity.
+func (s *SeveritiesService) CreateOrgSeverity(ctx context.Context, r CreateOrgSeverityRequest) (*CreateOrgSeverityResponse, error) {
+	if s.client.stubmode {
+		return s.stubCreateOrgSeverity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.CreateOrgSeverity: marshal CreateOrgSeverityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "SeveritiesService.CreateOrgSeverity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.CreateOrgSeverity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.CreateOrgSeverity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		CreateOrgSeverityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("SeveritiesService.CreateOrgSeverity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.CreateOrgSeverity: read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("SeveritiesService.CreateOrgSeverity", resp.StatusCode, respBodyBytes)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("SeveritiesService.CreateOrgSeverity: unmarshal CreateOrgSeverityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.CreateOrgSeverityResponse, nil
+}
+
+// DeleteOrgSeverity permanently deletes a severity that no incident uses. If any
+// incident, open or closed, has the severity or recorded it in a key update,
+// it returns a severities.in_use error and changes nothing; use ArchiveOrgSeverity
+// to retire a severity that is in use. The Pending severity is system-managed
+// and cannot be deleted; attempting to do so returns a severities.system_managed
+// error.
+func (s *SeveritiesService) DeleteOrgSeverity(ctx context.Context, r DeleteOrgSeverityRequest) (*DeleteOrgSeverityResponse, error) {
+	if s.client.stubmode {
+		return s.stubDeleteOrgSeverity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.DeleteOrgSeverity: marshal DeleteOrgSeverityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "SeveritiesService.DeleteOrgSeverity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.DeleteOrgSeverity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.DeleteOrgSeverity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		DeleteOrgSeverityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("SeveritiesService.DeleteOrgSeverity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.DeleteOrgSeverity: read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("SeveritiesService.DeleteOrgSeverity", resp.StatusCode, respBodyBytes)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("SeveritiesService.DeleteOrgSeverity: unmarshal DeleteOrgSeverityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.DeleteOrgSeverityResponse, nil
+}
+
+// GetOrgSeverities gets all severities for the organization.
+func (s *SeveritiesService) GetOrgSeverities(ctx context.Context, r GetOrgSeveritiesRequest) (*GetOrgSeveritiesResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetOrgSeverities()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetOrgSeverities: marshal GetOrgSeveritiesRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "SeveritiesService.GetOrgSeverities"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetOrgSeverities: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetOrgSeverities: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetOrgSeveritiesResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("SeveritiesService.GetOrgSeverities: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetOrgSeverities: read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("SeveritiesService.GetOrgSeverities", resp.StatusCode, respBodyBytes)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetOrgSeverities: unmarshal GetOrgSeveritiesResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetOrgSeveritiesResponse, nil
+}
+
+// GetSeverityByID gets a severity by ID.
+func (s *SeveritiesService) GetSeverityByID(ctx context.Context, r GetSeverityByIDRequest) (*GetSeverityByIDResponse, error) {
+	if s.client.stubmode {
+		return s.stubGetSeverityByID()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetSeverityByID: marshal GetSeverityByIDRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "SeveritiesService.GetSeverityByID"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetSeverityByID: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetSeverityByID: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		GetSeverityByIDResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("SeveritiesService.GetSeverityByID: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetSeverityByID: read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("SeveritiesService.GetSeverityByID", resp.StatusCode, respBodyBytes)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("SeveritiesService.GetSeverityByID: unmarshal GetSeverityByIDResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.GetSeverityByIDResponse, nil
+}
+
+// UnarchiveOrgSeverity unarchives a severity.
+func (s *SeveritiesService) UnarchiveOrgSeverity(ctx context.Context, r UnarchiveOrgSeverityRequest) (*UnarchiveOrgSeverityResponse, error) {
+	if s.client.stubmode {
+		return s.stubUnarchiveOrgSeverity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UnarchiveOrgSeverity: marshal UnarchiveOrgSeverityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "SeveritiesService.UnarchiveOrgSeverity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UnarchiveOrgSeverity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UnarchiveOrgSeverity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UnarchiveOrgSeverityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("SeveritiesService.UnarchiveOrgSeverity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UnarchiveOrgSeverity: read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("SeveritiesService.UnarchiveOrgSeverity", resp.StatusCode, respBodyBytes)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UnarchiveOrgSeverity: unmarshal UnarchiveOrgSeverityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UnarchiveOrgSeverityResponse, nil
+}
+
+// UpdateOrgSeverity updates a severity. All editable fields are replaced with the
+// values sent, so omitted fields are cleared. The level and archive state are not
+// changed.
+func (s *SeveritiesService) UpdateOrgSeverity(ctx context.Context, r UpdateOrgSeverityRequest) (*UpdateOrgSeverityResponse, error) {
+	if s.client.stubmode {
+		return s.stubUpdateOrgSeverity()
+	}
+	requestBodyBytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UpdateOrgSeverity: marshal UpdateOrgSeverityRequest: %w", err)
+	}
+	url := s.client.RemoteHost + "SeveritiesService.UpdateOrgSeverity"
+	s.client.Debug(fmt.Sprintf("POST %s", url))
+	s.client.Debug(fmt.Sprintf(">> %s", string(requestBodyBytes)))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UpdateOrgSeverity: NewRequest: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("User-Agent", UserAgent)
+	req = req.WithContext(ctx)
+	if s.client.BeforeRequest != nil {
+		err = s.client.BeforeRequest(req)
+		if err != nil {
+			// don't wrap this error, it belongs to the user
+			return nil, err
+		}
+	}
+	resp, err := s.client.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UpdateOrgSeverity: %w", err)
+	}
+	defer resp.Body.Close()
+	var response struct {
+		UpdateOrgSeverityResponse
+		Error string
+	}
+	var bodyReader io.Reader = resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		decodedBody, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("SeveritiesService.UpdateOrgSeverity: new gzip reader: %w", err)
+		}
+		defer decodedBody.Close()
+		bodyReader = decodedBody
+	}
+	respBodyBytes, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UpdateOrgSeverity: read response body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newAPIError("SeveritiesService.UpdateOrgSeverity", resp.StatusCode, respBodyBytes)
+	}
+	if err := json.Unmarshal(respBodyBytes, &response); err != nil {
+		return nil, fmt.Errorf("SeveritiesService.UpdateOrgSeverity: unmarshal UpdateOrgSeverityResponse: %w", err)
+	}
+	// Legacy servers may still report a failure in the body of a 2xx response.
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return &response.UpdateOrgSeverityResponse, nil
 }
 
 // StatusService provides methods for managing incident status configurations.
@@ -10947,6 +11555,150 @@ func (s *RolesService) stubUpdateRole() (*UpdateRoleResponse, error) {
 	var dest UpdateRoleResponse
 	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
 		return nil, fmt.Errorf("stubUpdateRole: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *SeveritiesService) stubArchiveOrgSeverity() (*ArchiveOrgSeverityResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest ArchiveOrgSeverityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubArchiveOrgSeverity: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *SeveritiesService) stubCreateOrgSeverity() (*CreateOrgSeverityResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"severity": {
+		"archivedAt": "2020-01-01T00:00:00Z",
+		"createdAt": "2020-01-01T00:00:00Z",
+		"darkColor": "rgb(255, 0, 0)",
+		"description": "Moderate incidents affect some users or features.",
+		"displayLabel": "Moderate",
+		"iconName": "fire",
+		"level": 4,
+		"lightColor": "rgb(255, 0, 0)",
+		"orgID": "org-1",
+		"severityID": "severity-123",
+		"updatedAt": "2020-01-01T00:00:00Z"
+	}
+}`
+	var dest CreateOrgSeverityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubCreateOrgSeverity: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *SeveritiesService) stubDeleteOrgSeverity() (*DeleteOrgSeverityResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest DeleteOrgSeverityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubDeleteOrgSeverity: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *SeveritiesService) stubGetOrgSeverities() (*GetOrgSeveritiesResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"severities": [
+		{
+			"archivedAt": "2020-01-01T00:00:00Z",
+			"createdAt": "2020-01-01T00:00:00Z",
+			"darkColor": "rgb(255, 0, 0)",
+			"description": "Moderate incidents affect some users or features.",
+			"displayLabel": "Moderate",
+			"iconName": "fire",
+			"level": 4,
+			"lightColor": "rgb(255, 0, 0)",
+			"orgID": "org-1",
+			"severityID": "severity-123",
+			"updatedAt": "2020-01-01T00:00:00Z"
+		},
+		{
+			"archivedAt": "2020-01-01T00:00:00Z",
+			"createdAt": "2020-01-01T00:00:00Z",
+			"darkColor": "rgb(255, 0, 0)",
+			"description": "Moderate incidents affect some users or features.",
+			"displayLabel": "Moderate",
+			"iconName": "fire",
+			"level": 4,
+			"lightColor": "rgb(255, 0, 0)",
+			"orgID": "org-1",
+			"severityID": "severity-123",
+			"updatedAt": "2020-01-01T00:00:00Z"
+		}
+	]
+}`
+	var dest GetOrgSeveritiesResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetOrgSeverities: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *SeveritiesService) stubGetSeverityByID() (*GetSeverityByIDResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"severity": {
+		"archivedAt": "2020-01-01T00:00:00Z",
+		"createdAt": "2020-01-01T00:00:00Z",
+		"darkColor": "rgb(255, 0, 0)",
+		"description": "Moderate incidents affect some users or features.",
+		"displayLabel": "Moderate",
+		"iconName": "fire",
+		"level": 4,
+		"lightColor": "rgb(255, 0, 0)",
+		"orgID": "org-1",
+		"severityID": "severity-123",
+		"updatedAt": "2020-01-01T00:00:00Z"
+	}
+}`
+	var dest GetSeverityByIDResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubGetSeverityByID: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *SeveritiesService) stubUnarchiveOrgSeverity() (*UnarchiveOrgSeverityResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong"
+}`
+	var dest UnarchiveOrgSeverityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUnarchiveOrgSeverity: json.Unmarshal: %w", err)
+	}
+	return &dest, nil
+}
+
+func (s *SeveritiesService) stubUpdateOrgSeverity() (*UpdateOrgSeverityResponse, error) {
+	exampleJSON := `{
+	"error": "something went wrong",
+	"severity": {
+		"archivedAt": "2020-01-01T00:00:00Z",
+		"createdAt": "2020-01-01T00:00:00Z",
+		"darkColor": "rgb(255, 0, 0)",
+		"description": "Moderate incidents affect some users or features.",
+		"displayLabel": "Moderate",
+		"iconName": "fire",
+		"level": 4,
+		"lightColor": "rgb(255, 0, 0)",
+		"orgID": "org-1",
+		"severityID": "severity-123",
+		"updatedAt": "2020-01-01T00:00:00Z"
+	}
+}`
+	var dest UpdateOrgSeverityResponse
+	if err := json.Unmarshal([]byte(exampleJSON), &dest); err != nil {
+		return nil, fmt.Errorf("stubUpdateOrgSeverity: json.Unmarshal: %w", err)
 	}
 	return &dest, nil
 }
