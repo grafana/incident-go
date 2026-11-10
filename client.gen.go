@@ -280,11 +280,12 @@ type AddLabelKeyRequest struct {
 	// Key is the label key.
 	Key string `json:"key"`
 
-	// Description is a short explanation of the label.
+	// Description is a short explanation of the label. At most 255 characters.
 	Description string `json:"description"`
 
 	// Color is the CSS hex color of the label. Labels show up in both light and dark
 	// modes, and this should be taken into consideration when selecting a color.
+	// At most 255 characters.
 	ColorHex string `json:"colorHex"`
 }
 
@@ -321,11 +322,12 @@ type AddLabelValueRequest struct {
 	// Value is the label value.
 	Value string `json:"value"`
 
-	// Description is a short explanation of the label value.
+	// Description is a short explanation of the label value. At most 255 characters.
 	Description string `json:"description"`
 
 	// Color is the CSS hex color of the label value. Labels show up in both light and
 	// dark modes, and this should be taken into consideration when selecting a color.
+	// At most 255 characters.
 	ColorHex string `json:"colorHex"`
 }
 
@@ -733,20 +735,20 @@ type CustomMetadataField struct {
 	// UUID is the UUID of the field.
 	UUID string `json:"uuid"`
 
-	// Name is the name of the field.
+	// Name is the name of the field. At most 255 characters.
 	Name string `json:"name"`
 
 	// Slug is the slug of the field. Used for searching and referencing the field as a
 	// metric.
 	Slug string `json:"slug"`
 
-	// Color is the field color.
+	// Color is the field color. At most 255 characters.
 	Color string `json:"color"`
 
-	// Icon is the field icon.
+	// Icon is the field icon. At most 128 characters.
 	Icon string `json:"icon"`
 
-	// Description is the description of the field.
+	// Description is the description of the field. At most 255 characters.
 	Description string `json:"description"`
 
 	// Type is the type of the field.
@@ -758,7 +760,8 @@ type CustomMetadataField struct {
 	// Immutable indicates if the field can by modified by the user.
 	Immutable bool `json:"immutable"`
 
-	// DomainName is scope for which the field is valid/used.
+	// DomainName is the scope for which the field is valid/used. It is set when the
+	// field is created and can not be changed.
 	DomainName string `json:"domainName"`
 
 	// Selectoptions is the list of select options for the field. Only used for select
@@ -766,11 +769,11 @@ type CustomMetadataField struct {
 	Selectoptions []CustomMetadataFieldSelectOption `json:"selectoptions"`
 
 	// Source indicates the origin of this field (eg. incident, gops-labels, github,
-	// etc)
+	// etc). At most 255 characters.
 	Source string `json:"source"`
 
 	// ExternalID, if defined, stores the ID of this field in a third-party service
-	// (eg. gops-label id)
+	// (eg. gops-label id). At most 255 characters.
 	ExternalID string `json:"externalID"`
 
 	// Archived is whether this field is archived. Archived fields are not allowed to
@@ -790,25 +793,32 @@ type CustomMetadataFieldSelectOption struct {
 	// Value is the value of the select option.
 	Value string `json:"value"`
 
-	// Label is the label of the select option.
+	// Label is the label of the select option. At most 255 characters.
 	Label string `json:"label"`
 
-	// Color is the color of the select option.
+	// Color is the color of the select option. At most 255 characters.
 	Color string `json:"color"`
 
-	// Icon is the icon of the select option.
+	// Icon is the icon of the select option. At most 128 characters.
 	Icon string `json:"icon"`
 
-	// Description is the textual description of the option.
+	// Description is the textual description of the option. At most 255 characters.
 	Description string `json:"description"`
 
 	// Source indicates the origin of this option (eg. incident, gops-labels, github,
-	// etc)
+	// etc). At most 255 characters.
 	Source string `json:"source"`
 
 	// ExternalID, if defined, stores the ID of this option in a third-party service
-	// (eg. gops-label id)
+	// (eg. gops-label id). At most 255 characters.
 	ExternalID string `json:"externalID"`
+
+	// Archived is whether this option is archived. Incidents that already use an
+	// archived option keep their value. Archived options are only returned when
+	// IncludeArchived is set. An option left out of an update is deleted whether or
+	// not it is archived, so send an archived option back to keep it. Defaults to
+	// false, so an option sent without archived is set as not archived.
+	Archived bool `json:"archived"`
 }
 
 // CustomMetadataFieldValue is a custom metadata field value.
@@ -1035,7 +1045,7 @@ type GetFieldRequest struct {
 	// FieldUUID is the UUID of the field.
 	FieldUUID string `json:"fieldUUID"`
 
-	// IncludeArchived, if true, includes archived fields in the result.
+	// IncludeArchived, if true, includes archived select options in the field.
 	IncludeArchived bool `json:"includeArchived"`
 }
 
@@ -1071,6 +1081,10 @@ type GetFieldsRequest struct {
 
 	// DomainName, if provided, will filter the results to the specified domain.
 	DomainName string `json:"domainName"`
+
+	// IncludeArchived, if true, includes archived select options in each field.
+	// Archived fields are returned either way, with archived set.
+	IncludeArchived bool `json:"includeArchived"`
 }
 
 // GetFieldsResponse is the response from the GetFields method.
@@ -1942,7 +1956,7 @@ type RecordFieldValueRequest struct {
 	FieldUUID string `json:"fieldUUID"`
 
 	// Value is the json encoded value of the field to record. If empty, the field
-	// value will be set unset.
+	// value will be set unset. For string fields, at most 2048 characters.
 	Value string `json:"value"`
 
 	// TargetKind is the kind of the target to record the field value for.
@@ -2341,39 +2355,45 @@ type UpdateActivityRelevanceResponse struct {
 	ActivityItem ActivityItem `json:"activityItem"`
 }
 
-// UpdateFieldRequest is the request struct for api UpdateField method.
+// UpdateFieldRequest is the request struct for api UpdateField method. Name, Slug,
+// Color, Icon, Description, Required, Immutable and Selectoptions are replaced
+// with the values sent, so omitted fields are cleared and omitted select options
+// are deleted. The type, domain, source, external ID and archive state are not
+// changed. A DomainName that differs from the field domain returns a validation
+// error. Use ArchiveField and UnarchiveField to change the archive state.
 type UpdateFieldRequest struct {
 
 	// FieldUUID is the UUID of the field.
 	FieldUUID string `json:"fieldUUID"`
 
-	// Name is the name of the field.
+	// Name is the name of the field. At most 255 characters.
 	Name string `json:"name"`
 
 	// Slug is the slug of the field. Used for searching and referencing the field as a
 	// metric.
 	Slug string `json:"slug"`
 
-	// Color is the field color.
+	// Color is the field color. At most 255 characters.
 	Color string `json:"color"`
 
-	// Icon is the field icon.
+	// Icon is the field icon. At most 128 characters.
 	Icon string `json:"icon"`
 
-	// Description is the description of the field.
+	// Description is the description of the field. At most 255 characters.
 	Description string `json:"description"`
 
 	// Required is whether this field is required.
 	Required bool `json:"required"`
 
-	// DomainName is single-select for which a field is valid/used.
+	// DomainName must be the domain the field was created with, because the domain can
+	// not be changed. Leave it out to keep it.
 	DomainName string `json:"domainName"`
 
 	// Immutable indicates if the field can by modified by the user.
 	Immutable bool `json:"immutable"`
 
-	// Selectoptions is the list of select options for the field. Only used for select
-	// fields.
+	// Selectoptions is the list of select options for the field, archived ones
+	// included. Options left out are deleted. Only used for select fields.
 	Selectoptions []CustomMetadataFieldSelectOption `json:"selectoptions"`
 
 	// Version is the field version.
@@ -2400,16 +2420,16 @@ type UpdateFieldSelectOptionRequest struct {
 	// Value is the value of the select option.
 	Value string `json:"value"`
 
-	// Label is the label of the select option.
+	// Label is the label of the select option. At most 255 characters.
 	Label string `json:"label"`
 
-	// Color is the color of the select option.
+	// Color is the color of the select option. At most 255 characters.
 	Color string `json:"color"`
 
-	// Icon is the icon of the select option.
+	// Icon is the icon of the select option. At most 128 characters.
 	Icon string `json:"icon"`
 
-	// Description is the textual description of the option.
+	// Description is the textual description of the option. At most 255 characters.
 	Description string `json:"description"`
 }
 
@@ -3474,7 +3494,9 @@ func (s *FieldsService) ArchiveField(ctx context.Context, r ArchiveFieldRequest)
 	return &response.ArchiveFieldResponse, nil
 }
 
-// DeleteField deletes a field.
+// DeleteField deletes a field. If any incident, open or resolved, has a value for
+// an incident field, including a value cleared since, it returns a fields.in_use
+// error and changes nothing; use ArchiveField to retire a field that is in use.
 func (s *FieldsService) DeleteField(ctx context.Context, r DeleteFieldRequest) (*DeleteFieldResponse, error) {
 	if s.client.stubmode {
 		return s.stubDeleteField()
@@ -3537,7 +3559,10 @@ func (s *FieldsService) DeleteField(ctx context.Context, r DeleteFieldRequest) (
 	return &response.DeleteFieldResponse, nil
 }
 
-// DeleteFieldSelectOption deletes a field select option.
+// DeleteFieldSelectOption deletes a field select option. If any incident, open
+// or resolved, has the option of an incident field as a value, including a value
+// changed since, it returns a fields.option_in_use error and changes nothing;
+// archive the option with UpdateField instead.
 func (s *FieldsService) DeleteFieldSelectOption(ctx context.Context, r DeleteFieldSelectOptionRequest) (*DeleteFieldSelectOptionResponse, error) {
 	if s.client.stubmode {
 		return s.stubDeleteFieldSelectOption()
@@ -3915,7 +3940,14 @@ func (s *FieldsService) UnarchiveField(ctx context.Context, r UnarchiveFieldRequ
 	return &response.UnarchiveFieldResponse, nil
 }
 
-// UpdateField updates a field.
+// UpdateField updates a field. Select options the update leaves out are deleted,
+// archived ones too, so if any incident uses one of them on an incident field,
+// it returns a fields.option_in_use error, as DeleteFieldSelectOption does.
+// It changes nothing when it finds that use up front. If an incident starts using
+// the option while the update runs, the option is kept and the rest of the update
+// is still written. To keep an archived option, send it back with archived set
+// to true; GetField and GetFields return archived options when IncludeArchived is
+// set.
 func (s *FieldsService) UpdateField(ctx context.Context, r UpdateFieldRequest) (*UpdateFieldResponse, error) {
 	if s.client.stubmode {
 		return s.stubUpdateField()
@@ -8268,6 +8300,7 @@ func (s *FieldsService) stubAddField() (*AddFieldResponse, error) {
 		"required": "true",
 		"selectoptions": [
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8278,6 +8311,7 @@ func (s *FieldsService) stubAddField() (*AddFieldResponse, error) {
 				"value": "value"
 			},
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8329,6 +8363,7 @@ func (s *FieldsService) stubAddLabelKey() (*AddLabelKeyResponse, error) {
 		"required": "true",
 		"selectoptions": [
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8339,6 +8374,7 @@ func (s *FieldsService) stubAddLabelKey() (*AddLabelKeyResponse, error) {
 				"value": "value"
 			},
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8378,6 +8414,7 @@ func (s *FieldsService) stubAddLabelValue() (*AddLabelValueResponse, error) {
 		"required": "true",
 		"selectoptions": [
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8388,6 +8425,7 @@ func (s *FieldsService) stubAddLabelValue() (*AddLabelValueResponse, error) {
 				"value": "value"
 			},
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8460,6 +8498,7 @@ func (s *FieldsService) stubGetField() (*GetFieldResponse, error) {
 		"required": "true",
 		"selectoptions": [
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8470,6 +8509,7 @@ func (s *FieldsService) stubGetField() (*GetFieldResponse, error) {
 				"value": "value"
 			},
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8511,6 +8551,7 @@ func (s *FieldsService) stubGetFieldValues() (*GetFieldValuesResponse, error) {
 				"required": "true",
 				"selectoptions": [
 					{
+						"archived": "false",
 						"color": "#000000",
 						"description": "This label represents a new option",
 						"externalID": "1",
@@ -8521,6 +8562,7 @@ func (s *FieldsService) stubGetFieldValues() (*GetFieldValuesResponse, error) {
 						"value": "value"
 					},
 					{
+						"archived": "false",
 						"color": "#000000",
 						"description": "This label represents a new option",
 						"externalID": "1",
@@ -8552,6 +8594,7 @@ func (s *FieldsService) stubGetFieldValues() (*GetFieldValuesResponse, error) {
 				"required": "true",
 				"selectoptions": [
 					{
+						"archived": "false",
 						"color": "#000000",
 						"description": "This label represents a new option",
 						"externalID": "1",
@@ -8562,6 +8605,7 @@ func (s *FieldsService) stubGetFieldValues() (*GetFieldValuesResponse, error) {
 						"value": "value"
 					},
 					{
+						"archived": "false",
 						"color": "#000000",
 						"description": "This label represents a new option",
 						"externalID": "1",
@@ -8605,6 +8649,7 @@ func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
 			"required": "true",
 			"selectoptions": [
 				{
+					"archived": "false",
 					"color": "#000000",
 					"description": "This label represents a new option",
 					"externalID": "1",
@@ -8615,6 +8660,7 @@ func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
 					"value": "value"
 				},
 				{
+					"archived": "false",
 					"color": "#000000",
 					"description": "This label represents a new option",
 					"externalID": "1",
@@ -8643,6 +8689,7 @@ func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
 			"required": "true",
 			"selectoptions": [
 				{
+					"archived": "false",
 					"color": "#000000",
 					"description": "This label represents a new option",
 					"externalID": "1",
@@ -8653,6 +8700,7 @@ func (s *FieldsService) stubGetFields() (*GetFieldsResponse, error) {
 					"value": "value"
 				},
 				{
+					"archived": "false",
 					"color": "#000000",
 					"description": "This label represents a new option",
 					"externalID": "1",
@@ -8715,6 +8763,7 @@ func (s *FieldsService) stubUpdateField() (*UpdateFieldResponse, error) {
 		"required": "true",
 		"selectoptions": [
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
@@ -8725,6 +8774,7 @@ func (s *FieldsService) stubUpdateField() (*UpdateFieldResponse, error) {
 				"value": "value"
 			},
 			{
+				"archived": "false",
 				"color": "#000000",
 				"description": "This label represents a new option",
 				"externalID": "1",
